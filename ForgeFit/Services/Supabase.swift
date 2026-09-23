@@ -61,7 +61,9 @@ struct SupabaseError: LocalizedError {
             return "Choose a stronger password (at least 6 characters)."
         case "email_address_invalid":
             return "Enter a valid email address."
-        case "over_email_send_rate_limit", "over_request_rate_limit":
+        case "over_email_send_rate_limit":
+            return "Too many emails were sent from ForgeFit recently, so we couldn't send yours. Please try again in about an hour."
+        case "over_request_rate_limit":
             return "Too many attempts. Wait a few minutes and try again."
         case "signup_disabled":
             return "New accounts are turned off for this app."

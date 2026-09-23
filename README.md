@@ -83,7 +83,7 @@ One-time setup in the Supabase dashboard:
 
 1. **Create the table:** open **SQL Editor → New query**, paste the contents of [`supabase/setup.sql`](supabase/setup.sql), then click **Run**. This creates the `user_data` table, its security rules, and the `delete_user` function the app uses for "Delete account".
 2. **Let email links open the app:** in **Authentication → URL Configuration → Redirect URLs**, add `forgefit://auth-callback`. Confirmation and password-reset emails then bring people straight back into ForgeFit.
-3. **Optional:** in **Authentication → Sign In / Providers → Email**, turn off **Confirm email** if new users should be logged in right after signing up. Supabase's built-in email service only sends a few emails per hour, so for real users also set up custom SMTP (**Authentication → Emails**).
+3. **Confirm email:** Supabase's built-in email service sends only **2 emails per hour for the whole project**. Once that's used up, sign-ups fail with "Too many emails were sent…". Either turn off **Confirm email** (**Authentication → Sign In / Providers → Email**) so new users are logged in immediately with no email, or set up your own SMTP sender (**Authentication → Emails → SMTP**) before real users sign up.
 
 To point a build at a different project, change the two values in `project.yml`. Or set `SUPABASE_URL` and `SUPABASE_KEY` as repository variables (**Settings → Secrets and variables → Actions → Variables**): the Build iOS IPA workflow uses them instead. Leave both empty for an offline-only build.
 
