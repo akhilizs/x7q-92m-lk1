@@ -8,6 +8,8 @@ enum KeychainStore {
 
     static var apiKey: String? {
         get {
+            // UI tests pass `-uiTestAPIKey <value>` to exercise the chat without a real key.
+            if let testKey = UserDefaults.standard.string(forKey: "uiTestAPIKey") { return testKey }
             let query: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,

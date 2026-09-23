@@ -25,6 +25,11 @@ final class ForgeFitUITests: XCTestCase {
         let nameField = app.textFields["Your name"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 5))
         nameField.tap()
+        if app.keyboards.element.waitForExistence(timeout: 3) {
+            text(containing: "name?").tap()  // tapping outside a field closes the keyboard
+            XCTAssertTrue(app.keyboards.element.waitForNonExistence(timeout: 3), "Tapping outside should close the keyboard")
+            nameField.tap()
+        }
         nameField.typeText("Alex\n")         // submitting moves on to the next question
         XCTAssertTrue(text(containing: "gender?").waitForExistence(timeout: 5))
         tapButton(containing: "Female")
@@ -127,6 +132,41 @@ final class ForgeFitUITests: XCTestCase {
         snap("17-ai-settings")
         app.swipeUp()
         snap("17b-ai-models")
+    }
+
+    func testCoachKeyboardAndErrors() {
+        app = XCUIApplication()
+        // An invalid key: the chat opens, and Google's real endpoint rejects the request.
+        app.launchArguments = ["-uiTestReset", "-uiTestDemoHistory", "-uiTestAPIKey", "invalid-ui-test-key"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
+        app.buttons["Coach"].tap()
+        let input = app.textViews["coachInput"].exists ? app.textViews["coachInput"] : app.textFields["coachInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+
+        // The hide-keyboard button appears while typing and closes the keyboard.
+        input.tap()
+        let hide = app.buttons["Hide keyboard"]
+        XCTAssertTrue(hide.waitForExistence(timeout: 3))
+        snap("30-coach-typing")
+        hide.tap()
+        XCTAssertTrue(hide.waitForNonExistence(timeout: 3), "Hide keyboard should end editing")
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 3), "Tab bar should come back")
+
+        // Tapping outside the field also closes it.
+        input.tap()
+        XCTAssertTrue(hide.waitForExistence(timeout: 3))
+        text(containing: "I'm your coach").tap()
+        XCTAssertTrue(hide.waitForNonExistence(timeout: 3), "Tapping outside should end editing")
+
+        // Sending closes the keyboard; the rejected key shows Google's reason.
+        input.tap()
+        input.typeText("Hey")
+        app.buttons["Send"].tap()
+        XCTAssertTrue(hide.waitForNonExistence(timeout: 3))
+        _ = text(containing: "Google:").waitForExistence(timeout: 25)
+        snap("31-coach-error")
     }
 
     func testProgressWithHistory() {

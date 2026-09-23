@@ -66,7 +66,9 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: store.hasOnboarded)
+        .onAppear { TapOutsideToDismissKeyboard.shared.install() }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .active { TapOutsideToDismissKeyboard.shared.install() }
             if phase != .active { store.saveNow() }
         }
     }
