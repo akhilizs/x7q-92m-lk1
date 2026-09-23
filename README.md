@@ -3,19 +3,22 @@
 ForgeFit is a native SwiftUI iPhone app that builds your workout plan, tracks every set, and has an AI coach (powered by Anthropic's Claude) you can talk to about your struggles — it rewrites your plan to fit.
 
 <p align="center">
-  <img src="docs/screenshots/home.jpg" width="200">
-  <img src="docs/screenshots/workout.jpg" width="200">
-  <img src="docs/screenshots/coach.jpg" width="200">
-  <img src="docs/screenshots/charts.jpg" width="200">
+  <img src="docs/screenshots/welcome.jpg" width="200">
+  <img src="docs/screenshots/gender.jpg" width="200">
+  <img src="docs/screenshots/height.jpg" width="200">
+  <img src="docs/screenshots/sports.jpg" width="200">
 </p>
 <p align="center">
-  <img src="docs/screenshots/equipment.jpg" width="200">
-  <img src="docs/screenshots/plan.jpg" width="200">
-  <img src="docs/screenshots/progress.jpg" width="200">
-  <img src="docs/screenshots/history.jpg" width="200">
+  <img src="docs/screenshots/home.jpg" width="200">
+  <img src="docs/screenshots/plans.jpg" width="200">
+  <img src="docs/screenshots/workout.jpg" width="200">
+  <img src="docs/screenshots/profile.jpg" width="200">
 </p>
 
 ## Features
+
+**Onboarding**
+- Name, gender, age, height and weight (number wheels, kg/lb), main goal, experience, favorite sports, schedule, equipment and injuries. The answers feed the plan generator and the AI coach.
 
 **Plans**
 - **AI plan generator**: pick your goal, experience, days per week, session length, the **machines & equipment you have**, and optional focus muscles or notes (e.g. "bad left knee"). Claude designs a full weekly program with sets, rep ranges, rest times and cues.
@@ -40,7 +43,9 @@ ForgeFit is a native SwiftUI iPhone app that builds your workout plan, tracks ev
 - Replies stream in live, and you can stop a reply partway.
 
 **Design**
-- A dark, modern look with neon-lime and violet gradients, rounded type, glass cards and haptics.
+- Monochrome "dark mode done right": pure black canvas, graphite cards, white actions and soft pastel program cards with black tags and italic titles.
+- Photo welcome screen, onboarding questions with number wheels and outlined chips, and a floating capsule tab bar.
+- Photos by mehdi pezhvak, Victor Freitas and Marvin Cors on [Unsplash](https://unsplash.com) (Unsplash License), converted to black and white.
 
 ## Get the IPA
 
