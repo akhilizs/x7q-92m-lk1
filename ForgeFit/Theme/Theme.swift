@@ -183,6 +183,21 @@ struct SecondaryButtonStyle: ButtonStyle {
     }
 }
 
+/// Dark graphite capsule used for step-by-step flows ("Continue →").
+struct DarkCapsuleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.subheadline).weight(.medium))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(Capsule().fill(Color(white: configuration.isPressed ? 0.22 : 0.17)))
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
 /// Frosted capsule used on top of photos ("Let's Go →").
 struct GlassButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -224,6 +239,10 @@ enum Haptics {
 
     static func warning() {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
+
+    static func select() {
+        UISelectionFeedbackGenerator().selectionChanged()
     }
 }
 

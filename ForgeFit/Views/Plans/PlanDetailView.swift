@@ -99,18 +99,18 @@ struct PlanContentView: View {
                 Text(plan.name)
                     .font(.system(size: 28, weight: .medium))
                     .italic()
-                    .frame(maxWidth: 240, alignment: .leading)
+                    .frame(maxWidth: 210, alignment: .leading)
                 if !plan.summary.isEmpty {
                     Text(plan.summary)
                         .font(.footnote)
                         .foregroundStyle(Theme.inkSecondary)
-                        .frame(maxWidth: 250, alignment: .leading)
+                        .frame(maxWidth: 205, alignment: .leading)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .overlay(alignment: .bottomTrailing) {
-                FigureArt(symbol: Theme.figure(for: plan.goal), size: 110)
-                    .offset(x: 16, y: 26)
+            .overlay(alignment: .trailing) {
+                FigureArt(symbol: Theme.figure(for: plan.goal), size: 96)
+                    .offset(x: 14, y: 18)
             }
             .pastelCard(Theme.tint(for: plan.goal), padding: 20, radius: 30)
 
@@ -187,9 +187,13 @@ struct PlanContentView: View {
                     onStart(day)
                     Haptics.medium()
                 } label: {
-                    Label("Start \(day.name)", systemImage: "play.fill")
+                    HStack(spacing: 6) {
+                        Text("Start Workout")
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
                 }
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(DarkCapsuleButtonStyle())
                 .padding(.top, 6)
             }
         }

@@ -98,6 +98,27 @@ enum ExperienceLevel: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum Gender: String, Codable, CaseIterable, Identifiable {
+    case female, male, unspecified
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .female: return "Female"
+        case .male: return "Male"
+        case .unspecified: return "Prefer not to say"
+        }
+    }
+}
+
+/// Sports and activities the athlete enjoys (shared with the AI coach).
+enum Activities {
+    static let all = ["bodybuilding", "powerlifting", "running", "cycling", "swimming", "yoga",
+                      "pilates", "crossfit", "football", "basketball", "tennis", "boxing",
+                      "martial arts", "climbing", "hiking", "dance"]
+}
+
 struct UserProfile: Codable, Equatable {
     var name: String = ""
     var goal: FitnessGoal = .buildMuscle
@@ -111,6 +132,29 @@ struct UserProfile: Codable, Equatable {
     var useMetric: Bool = true
     /// Injuries, limitations or preferences — shared with the AI coach.
     var notes: String = ""
+    var gender: Gender? = nil
+    var activities: [String] = []
+
+    init() {}
+
+    /// Tolerant decoding so data saved by older versions keeps loading.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = UserProfile()
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? defaults.name
+        goal = try c.decodeIfPresent(FitnessGoal.self, forKey: .goal) ?? defaults.goal
+        level = try c.decodeIfPresent(ExperienceLevel.self, forKey: .level) ?? defaults.level
+        daysPerWeek = try c.decodeIfPresent(Int.self, forKey: .daysPerWeek) ?? defaults.daysPerWeek
+        sessionMinutes = try c.decodeIfPresent(Int.self, forKey: .sessionMinutes) ?? defaults.sessionMinutes
+        equipment = try c.decodeIfPresent(Set<Equipment>.self, forKey: .equipment) ?? defaults.equipment
+        bodyWeightKg = try c.decodeIfPresent(Double.self, forKey: .bodyWeightKg)
+        heightCm = try c.decodeIfPresent(Double.self, forKey: .heightCm)
+        age = try c.decodeIfPresent(Int.self, forKey: .age)
+        useMetric = try c.decodeIfPresent(Bool.self, forKey: .useMetric) ?? defaults.useMetric
+        notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? defaults.notes
+        gender = try c.decodeIfPresent(Gender.self, forKey: .gender)
+        activities = try c.decodeIfPresent([String].self, forKey: .activities) ?? []
+    }
 
     var firstName: String {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
@@ -124,11 +168,15 @@ struct UserProfile: Codable, Equatable {
         lines.append("Experience: \(level.title)")
         lines.append("Training days per week: \(daysPerWeek)")
         lines.append("Session length: \(sessionMinutes) minutes")
+        if let gender, gender != .unspecified { lines.append("Sex: \(gender.rawValue)") }
         if let age { lines.append("Age: \(age)") }
         if let bodyWeightKg { lines.append(String(format: "Body weight: %.1f kg", bodyWeightKg)) }
         if let heightCm { lines.append(String(format: "Height: %.0f cm", heightCm)) }
         let eq = Equipment.allCases.filter { equipment.contains($0) }.map(\.rawValue).joined(separator: ", ")
         lines.append("Available equipment: \(eq.isEmpty ? "bodyweight only" : eq)")
+        if !activities.isEmpty {
+            lines.append("Enjoys: \(activities.joined(separator: ", "))")
+        }
         if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             lines.append("Injuries / limitations / preferences: \(notes)")
         }

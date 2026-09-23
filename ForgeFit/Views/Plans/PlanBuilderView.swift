@@ -302,11 +302,8 @@ private struct PickerRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: exercise.primary.symbol)
-                .font(.subheadline)
-                .foregroundStyle(Theme.color(for: exercise.primary))
-                .frame(width: 36, height: 36)
-                .background(Circle().fill(Theme.color(for: exercise.primary).opacity(0.15)))
+            IconBadge(symbol: exercise.primary.symbol, background: Theme.color(for: exercise.primary),
+                      foreground: Theme.ink, size: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name).font(.subheadline.weight(.semibold))
                 Text("\(exercise.primary.displayName) · \(exercise.equipmentLabel)")

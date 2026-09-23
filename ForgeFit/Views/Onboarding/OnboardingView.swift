@@ -4,13 +4,17 @@ struct OnboardingView: View {
     @Environment(AppStore.self) private var store
 
     private enum Step: Int, CaseIterable {
-        case welcome, name, goal, level, schedule, equipment, body, building
+        case welcome, name, gender, age, height, weight, goal, level, activities, schedule, equipment, notes, building
+
+        /// Steps that show the dash progress (everything between welcome and building).
+        static var questionCount: Int { allCases.count - 2 }
     }
 
     @State private var step: Step = .welcome
     @State private var draft = UserProfile()
-    @State private var weightText = ""
-    @State private var ageText = ""
+    @State private var age = 25
+    @State private var heightCm = 170
+    @State private var weight = 70
     @State private var generatedPlan: WorkoutPlan?
 
     var body: some View {
@@ -20,7 +24,7 @@ struct OnboardingView: View {
                     .transition(.opacity)
             } else {
                 VStack(spacing: 0) {
-                    if step != .building { header }
+                    header
                     content
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .id(step)
@@ -43,15 +47,11 @@ struct OnboardingView: View {
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 10) {
-                    Image(systemName: "dumbbell.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.black)
-                        .frame(width: 26, height: 26)
-                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white))
-                    Text("ForgeFit")
-                        .font(.system(size: 15, weight: .semibold))
-                    Spacer()
+                HStack(spacing: 16) {
+                    BrandMark()
+                    DashProgress(current: -1, total: 6)
+                        .frame(maxWidth: 150)
+                    Spacer(minLength: 0)
                 }
                 Spacer()
                 Text("Welcome to ForgeFit")
@@ -94,33 +94,41 @@ struct OnboardingView: View {
 
     private var header: some View {
         HStack(spacing: 16) {
-            Button {
-                back()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(Theme.surfaceRaised))
+            BrandMark()
+            if step != .building {
+                DashProgress(current: step.rawValue - 1, total: Step.questionCount)
+            } else {
+                Spacer()
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
-            DashProgress(current: step.rawValue - 1, total: Step.allCases.count - 2)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
+        .padding(.horizontal, 24)
+        .padding(.top, 10)
     }
 
     private var footer: some View {
-        Button {
-            next()
-        } label: {
-            Text(step == .building ? "Let's go" : "Continue")
+        VStack(spacing: 6) {
+            Button {
+                next()
+            } label: {
+                HStack(spacing: 6) {
+                    Text(step == .building ? "Let's go" : "Continue")
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+            }
+            .buttonStyle(DarkCapsuleButtonStyle())
+            .disabled(!canContinue)
+            .opacity(canContinue ? 1 : 0.4)
+
+            if step != .building {
+                Button("Back") { back() }
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(height: 34)
+            }
         }
-        .buttonStyle(PrimaryButtonStyle())
-        .disabled(!canContinue)
-        .opacity(canContinue ? 1 : 0.35)
-        .padding(.horizontal, 20)
-        .padding(.bottom, 12)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 8)
     }
 
     private var canContinue: Bool {
@@ -137,84 +145,145 @@ struct OnboardingView: View {
     private var content: some View {
         switch step {
         case .welcome: EmptyView()
-        case .name: nameStep
+        case .name:
+            StepScroll(title: "what is your\nname?", subtitle: "Your coach will use it to keep things personal.") {
+                TextField("Your name", text: $draft.name)
+                    .font(.system(size: 24, weight: .light))
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.continue)
+                    .onSubmit { if canContinue { next() } }
+                    .padding(.horizontal, 20)
+                    .frame(height: 64)
+                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color(white: 0.07)))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.white.opacity(0.12)))
+            }
+        case .gender:
+            StepScroll(title: "what is your\ngender?", subtitle: "Please select your gender.") {
+                VStack(spacing: 12) {
+                    ForEach([Gender.female, Gender.male], id: \.self) { g in
+                        Button {
+                            draft.gender = g
+                            Haptics.tap()
+                        } label: {
+                            ChoiceTile(title: g.title, isSelected: draft.gender == g)
+                        }
+                        .buttonStyle(PressableStyle())
+                    }
+                    Button {
+                        draft.gender = .unspecified
+                        Haptics.tap()
+                    } label: {
+                        Text(Gender.unspecified.title)
+                            .font(.footnote)
+                            .foregroundStyle(draft.gender == .unspecified ? Color.white : Theme.textTertiary)
+                            .padding(.vertical, 8)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        case .age:
+            WheelStep(title: "what is your\nage?", subtitle: "Please select your age.") {
+                NumberWheel(value: $age, range: 14...90, unit: "yrs")
+            }
+        case .height:
+            WheelStep(title: "what is your\nheight?", subtitle: "Please select your height.") {
+                NumberWheel(value: $heightCm, range: 120...220, unit: "cm")
+            } footnote: {
+                Text(feetAndInches(heightCm))
+            }
+        case .weight:
+            WheelStep(title: "what is your\nweight?", subtitle: "Please select your weight.") {
+                NumberWheel(value: $weight,
+                            range: draft.useMetric ? 35...200 : 80...440,
+                            unit: WeightUnit.label(metric: draft.useMetric))
+                    .id(draft.useMetric)
+            } footnote: {
+                unitToggle
+            }
         case .goal:
-            StepScroll(title: "What's your main goal?", subtitle: "Your plan, sets and reps are tuned to it.") {
+            StepScroll(title: "what is your\nmain goal?", subtitle: "Your plan, sets and reps are tuned to it.") {
                 GoalGrid(selection: $draft.goal)
             }
         case .level:
-            StepScroll(title: "How experienced are you?", subtitle: "We'll match volume and exercise choice to your level.") {
+            StepScroll(title: "how experienced\nare you?", subtitle: "We match volume and exercise choice to your level.") {
                 LevelPicker(selection: $draft.level)
             }
-        case .schedule: scheduleStep
+        case .activities:
+            StepScroll(title: "what is your\nfavorite sport?", subtitle: "Please select your favorite sports. Pick as many as you like.") {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                    ForEach(Activities.all, id: \.self) { activity in
+                        let selected = draft.activities.contains(activity)
+                        Button {
+                            if selected {
+                                draft.activities.removeAll { $0 == activity }
+                            } else {
+                                draft.activities.append(activity)
+                            }
+                            Haptics.tap()
+                        } label: {
+                            OutlineChip(title: activity, isSelected: selected)
+                        }
+                        .buttonStyle(PressableStyle())
+                    }
+                }
+            }
+        case .schedule:
+            StepScroll(title: "how often can\nyou train?", subtitle: "Be realistic — consistency beats intensity.") {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Days per week")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                        DaysPerWeekPicker(days: $draft.daysPerWeek)
+                    }
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Minutes per session")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                        SessionLengthPicker(minutes: $draft.sessionMinutes)
+                    }
+                }
+            }
         case .equipment:
-            StepScroll(title: "What equipment do you have?",
+            StepScroll(title: "what equipment\ndo you have?",
                        subtitle: "Select the machines and gear available to you. Plans only use what you pick.") {
                 EquipmentSelector(selection: $draft.equipment)
             }
-        case .body: bodyStep
-        case .building: buildingStep
+        case .notes:
+            StepScroll(title: "any injuries or\nlimitations?", subtitle: "Optional — your AI coach works around them.") {
+                TextField("e.g. sore lower back, old shoulder injury, no jumping", text: $draft.notes, axis: .vertical)
+                    .font(.system(size: 17, weight: .light))
+                    .lineLimit(4...8)
+                    .padding(18)
+                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color(white: 0.07)))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.white.opacity(0.12)))
+            }
+        case .building:
+            buildingStep
         }
     }
 
-    private var nameStep: some View {
-        StepScroll(title: "What should we call you?", subtitle: "Your coach will use it to keep things personal.") {
-            TextField("Your name", text: $draft.name)
-                .font(.system(size: 22, weight: .medium))
-                .textInputAutocapitalization(.words)
-                .submitLabel(.continue)
-                .onSubmit { if canContinue { next() } }
-                .padding(18)
-                .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.surface))
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.stroke))
-        }
-    }
-
-    private var scheduleStep: some View {
-        StepScroll(title: "How often can you train?", subtitle: "Be realistic — consistency beats intensity.") {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Days per week")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.textSecondary)
-                    DaysPerWeekPicker(days: $draft.daysPerWeek)
+    private var unitToggle: some View {
+        HStack(spacing: 0) {
+            ForEach([true, false], id: \.self) { metric in
+                Button {
+                    guard draft.useMetric != metric else { return }
+                    let kg = WeightUnit.toKg(Double(weight), metric: draft.useMetric)
+                    draft.useMetric = metric
+                    weight = Int(WeightUnit.display(kg, metric: metric).rounded())
+                    Haptics.tap()
+                } label: {
+                    Text(WeightUnit.label(metric: metric))
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(draft.useMetric == metric ? Color.black : Theme.textSecondary)
+                        .frame(width: 56, height: 32)
+                        .background(Capsule().fill(draft.useMetric == metric ? Color.white : Color.clear))
                 }
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Minutes per session")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.textSecondary)
-                    SessionLengthPicker(minutes: $draft.sessionMinutes)
-                }
+                .buttonStyle(.plain)
             }
         }
-    }
-
-    private var bodyStep: some View {
-        StepScroll(title: "A few optional details", subtitle: "They help the AI coach personalise advice. Skip anything you like.") {
-            VStack(spacing: 14) {
-                Picker("Units", selection: $draft.useMetric) {
-                    Text("Metric (kg)").tag(true)
-                    Text("Imperial (lb)").tag(false)
-                }
-                .pickerStyle(.segmented)
-
-                HStack(spacing: 12) {
-                    LabeledInput(title: "Body weight (\(WeightUnit.label(metric: draft.useMetric)))", text: $weightText, keyboard: .decimalPad)
-                    LabeledInput(title: "Age", text: $ageText, keyboard: .numberPad)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Injuries, limitations or preferences")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Theme.textSecondary)
-                    TextField("e.g. sore lower back, love deadlifts, hate lunges", text: $draft.notes, axis: .vertical)
-                        .lineLimit(3...5)
-                        .padding(14)
-                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
-                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.stroke))
-                }
-            }
-        }
+        .padding(3)
+        .background(Capsule().fill(Theme.surfaceRaised))
     }
 
     private var buildingStep: some View {
@@ -223,13 +292,13 @@ struct OnboardingView: View {
             if let plan = generatedPlan {
                 VStack(spacing: 18) {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 34, weight: .bold))
+                        .font(.system(size: 30, weight: .semibold))
                         .foregroundStyle(.black)
-                        .frame(width: 84, height: 84)
+                        .frame(width: 80, height: 80)
                         .background(Circle().fill(.white))
                         .transition(.scale.combined(with: .opacity))
                     Text("Your plan is ready, \(draft.firstName)!")
-                        .font(.system(size: 28, weight: .semibold))
+                        .font(.system(size: 28, weight: .light))
                         .multilineTextAlignment(.center)
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
@@ -260,8 +329,8 @@ struct OnboardingView: View {
                 }
             } else {
                 CoachOrb(size: 88, animating: true)
-                Text("Building your plan…")
-                    .font(.system(size: 24, weight: .semibold))
+                Text("building your plan…")
+                    .font(.system(size: 26, weight: .light))
                 Text("Matching exercises to your goal, schedule and equipment.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
@@ -285,7 +354,7 @@ struct OnboardingView: View {
     private func next() {
         dismissKeyboard()
         switch step {
-        case .body:
+        case .notes:
             applyBodyDetails()
             step = .building
         case .building:
@@ -308,10 +377,9 @@ struct OnboardingView: View {
     }
 
     private func applyBodyDetails() {
-        if let weight = Double(weightText.replacingOccurrences(of: ",", with: ".")), weight > 0 {
-            draft.bodyWeightKg = WeightUnit.toKg(weight, metric: draft.useMetric)
-        }
-        if let age = Int(ageText), age > 0 { draft.age = age }
+        draft.age = age
+        draft.heightCm = Double(heightCm)
+        draft.bodyWeightKg = WeightUnit.toKg(Double(weight), metric: draft.useMetric)
     }
 
     private func finish() {
@@ -324,9 +392,35 @@ struct OnboardingView: View {
         store.hasOnboarded = true
         Haptics.success()
     }
+
+    private func feetAndInches(_ cm: Int) -> String {
+        let totalInches = Double(cm) / 2.54
+        let feet = Int(totalInches / 12)
+        let inches = Int(totalInches.rounded()) - feet * 12
+        return "≈ \(feet)′ \(inches)″"
+    }
 }
 
 // MARK: - Helpers
+
+/// Lowercase light question title + small subtitle, as in the reference design.
+private struct QuestionTitle: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 32, weight: .light))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(Theme.textTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
 
 private struct StepScroll<Content: View>: View {
     let title: String
@@ -335,20 +429,52 @@ private struct StepScroll<Content: View>: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(title)
-                        .font(.system(size: 30, weight: .regular))
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
-                }
+            VStack(alignment: .leading, spacing: 28) {
+                QuestionTitle(title: title, subtitle: subtitle)
                 content
             }
-            .padding(20)
-            .padding(.top, 12)
+            .padding(.horizontal, 24)
+            .padding(.top, 28)
+            .padding(.bottom, 20)
         }
         .scrollDismissesKeyboard(.interactively)
+    }
+}
+
+/// A question with a centred number wheel.
+private struct WheelStep<Wheel: View, Footnote: View>: View {
+    let title: String
+    let subtitle: String
+    let wheel: Wheel
+    let footnote: Footnote
+
+    init(title: String, subtitle: String, @ViewBuilder wheel: () -> Wheel,
+         @ViewBuilder footnote: () -> Footnote) {
+        self.title = title
+        self.subtitle = subtitle
+        self.wheel = wheel()
+        self.footnote = footnote()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            QuestionTitle(title: title, subtitle: subtitle)
+                .padding(.horizontal, 24)
+                .padding(.top, 28)
+            Spacer(minLength: 8)
+            wheel
+            footnote
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .padding(.top, 8)
+            Spacer(minLength: 8)
+        }
+    }
+}
+
+extension WheelStep where Footnote == EmptyView {
+    init(title: String, subtitle: String, @ViewBuilder wheel: () -> Wheel) {
+        self.init(title: title, subtitle: subtitle, wheel: wheel, footnote: { EmptyView() })
     }
 }
 

@@ -262,11 +262,7 @@ struct ExerciseLogCard: View {
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
             let muscle = exercise.exercise?.primary ?? .fullBody
-            Image(systemName: muscle.symbol)
-                .font(.headline)
-                .foregroundStyle(Theme.color(for: muscle))
-                .frame(width: 42, height: 42)
-                .background(Circle().fill(Theme.color(for: muscle).opacity(0.15)))
+            IconBadge(symbol: muscle.symbol, background: Theme.color(for: muscle), foreground: Theme.ink, size: 42)
             VStack(alignment: .leading, spacing: 4) {
                 Text(exercise.name)
                     .font(.system(.headline).weight(.semibold))

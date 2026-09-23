@@ -12,6 +12,10 @@ enum DemoData {
         profile.sessionMinutes = 60
         profile.equipment = EquipmentPreset.fullGym.equipment
         profile.bodyWeightKg = 82
+        profile.heightCm = 180
+        profile.age = 29
+        profile.gender = .male
+        profile.activities = ["bodybuilding", "running"]
         store.profile = profile
 
         let plan = PlanGenerator.generate(profile: profile)

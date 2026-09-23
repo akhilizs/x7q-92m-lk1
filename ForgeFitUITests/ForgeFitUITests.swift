@@ -20,20 +20,39 @@ final class ForgeFitUITests: XCTestCase {
                       || app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Let's Go")).firstMatch.exists)
         snap("00-welcome")
         tapButton(containing: "Let's Go")
-        XCTAssertTrue(app.staticTexts["What should we call you?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(text(containing: "name?").waitForExistence(timeout: 5))
         snap("01-onboarding-name")
         let nameField = app.textFields["Your name"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 5))
         nameField.tap()
-        nameField.typeText("Alex\n")         // submitting moves on to the goal step
-        XCTAssertTrue(app.staticTexts["What's your main goal?"].waitForExistence(timeout: 5))
-        snap("02-onboarding-goal")
-        tapButton(containing: "Continue")   // goal
-        tapButton(containing: "Continue")   // level
-        tapButton(containing: "Continue")   // schedule
-        snap("03-onboarding-equipment")
-        tapButton(containing: "Continue")   // equipment
-        tapButton(containing: "Continue")   // body details
+        nameField.typeText("Alex\n")         // submitting moves on to the next question
+        XCTAssertTrue(text(containing: "gender?").waitForExistence(timeout: 5))
+        tapButton(containing: "Female")
+        snap("02-onboarding-gender")
+        tapButton(containing: "Continue")   // gender -> age
+        XCTAssertTrue(text(containing: "age?").waitForExistence(timeout: 5))
+        snap("02b-onboarding-age")
+        tapButton(containing: "Continue")   // age -> height
+        XCTAssertTrue(text(containing: "height?").waitForExistence(timeout: 5))
+        snap("03-onboarding-height")
+        tapButton(containing: "Continue")   // height -> weight
+        XCTAssertTrue(text(containing: "weight?").waitForExistence(timeout: 5))
+        snap("03b-onboarding-weight")
+        tapButton(containing: "Continue")   // weight -> goal
+        XCTAssertTrue(text(containing: "main goal?").waitForExistence(timeout: 5))
+        snap("03c-onboarding-goal")
+        tapButton(containing: "Continue")   // goal -> level
+        tapButton(containing: "Continue")   // level -> sports
+        XCTAssertTrue(text(containing: "favorite sport?").waitForExistence(timeout: 5))
+        tapButton(containing: "bodybuilding")
+        tapButton(containing: "running")
+        snap("03d-onboarding-sports")
+        tapButton(containing: "Continue")   // sports -> schedule
+        tapButton(containing: "Continue")   // schedule -> equipment
+        XCTAssertTrue(text(containing: "equipment").waitForExistence(timeout: 5))
+        snap("03e-onboarding-equipment")
+        tapButton(containing: "Continue")   // equipment -> injuries
+        tapButton(containing: "Continue")   // injuries -> plan
         XCTAssertTrue(app.staticTexts["Your plan is ready, Alex!"].waitForExistence(timeout: 10))
         snap("04-onboarding-plan-ready")
         tapButton(containing: "Let's go")
@@ -99,6 +118,8 @@ final class ForgeFitUITests: XCTestCase {
         app.buttons["Profile"].tap()
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
         snap("16-profile")
+        app.swipeUp()
+        snap("16b-profile-bottom")
     }
 
     func testProgressWithHistory() {
@@ -141,6 +162,10 @@ final class ForgeFitUITests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    private func text(containing value: String) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", value)).firstMatch
+    }
 
     private func tap(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(element.waitForExistence(timeout: 5), "Missing \(element)", file: file, line: line)

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A dark list row with an icon, title, subtitle and a radio indicator.
+/// Outlined dark option tile with a title, subtitle and radio indicator.
 struct OptionRow: View {
     let symbol: String
     let title: String
@@ -10,40 +10,40 @@ struct OptionRow: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: symbol)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(isSelected ? Color.black : Color.white)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(isSelected ? Color.white : Theme.surfaceHigh))
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(isSelected ? Color.white : Theme.textTertiary)
+                .frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 17, weight: isSelected ? .medium : .regular))
+                    .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.6))
                 if let subtitle {
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(isSelected ? Theme.textSecondary : Theme.textTertiary)
                         .multilineTextAlignment(.leading)
                 }
             }
             Spacer(minLength: 8)
             ZStack {
                 Circle()
-                    .strokeBorder(isSelected ? Color.white : Theme.textTertiary, lineWidth: 1.5)
-                    .frame(width: 24, height: 24)
+                    .strokeBorder(isSelected ? Color.white : Color.white.opacity(0.2), lineWidth: 1.2)
+                    .frame(width: 22, height: 22)
                 if isSelected {
-                    Circle().fill(Color.white).frame(width: 14, height: 14)
+                    Circle().fill(Color.white).frame(width: 12, height: 12)
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(isSelected ? Theme.surfaceRaised : Theme.surface)
+                .fill(LinearGradient(colors: [Color(white: isSelected ? 0.13 : 0.075), Color(white: 0.045)],
+                                     startPoint: .top, endPoint: .bottom))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(isSelected ? Color.white.opacity(0.35) : Theme.stroke, lineWidth: 1)
+                .strokeBorder(Color.white.opacity(isSelected ? 0.5 : 0.09), lineWidth: 1)
         )
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.15), value: isSelected)
@@ -262,5 +262,122 @@ struct MuscleFocusPicker: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+}
+
+// MARK: - Onboarding-style controls
+
+/// Vertical number wheel: the selected value is large and bright, neighbours fade out.
+struct NumberWheel: View {
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    let unit: String
+    var itemHeight: CGFloat = 92
+    var height: CGFloat = 320
+
+    @State private var position: Int?
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: 0) {
+                ForEach(Array(range), id: \.self) { number in
+                    let distance = abs(number - (position ?? value))
+                    HStack(alignment: .lastTextBaseline, spacing: 4) {
+                        Text("\(number)")
+                            .font(.system(size: distance == 0 ? 72 : 56, weight: .light))
+                            .monospacedDigit()
+                        Text(unit)
+                            .font(.system(size: 20, weight: .light))
+                    }
+                    .foregroundStyle(.white.opacity(distance == 0 ? 1 : (distance == 1 ? 0.22 : 0.08)))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: itemHeight)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.snappy) { position = number }
+                    }
+                    .id(number)
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $position)
+        .safeAreaPadding(.vertical, (height - itemHeight) / 2)
+        .frame(height: height)
+        .animation(.easeOut(duration: 0.15), value: position)
+        .onAppear {
+            if position == nil { position = value }
+        }
+        .onChange(of: position) { _, newValue in
+            guard let newValue, newValue != value else { return }
+            value = newValue
+            Haptics.select()
+        }
+        .accessibilityElement()
+        .accessibilityLabel("\(value) \(unit)")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: position = min(range.upperBound, value + 1)
+            case .decrement: position = max(range.lowerBound, value - 1)
+            @unknown default: break
+            }
+        }
+    }
+}
+
+/// Large dark choice tile ("Female" / "Male").
+struct ChoiceTile: View {
+    let title: String
+    let isSelected: Bool
+    var height: CGFloat = 110
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 17, weight: isSelected ? .medium : .regular))
+            .foregroundStyle(isSelected ? Color.white : Theme.textTertiary)
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(LinearGradient(colors: [Color(white: isSelected ? 0.14 : 0.08), Color(white: 0.05)],
+                                         startPoint: .top, endPoint: .bottom))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color.white.opacity(isSelected ? 0.55 : 0.1), lineWidth: 1)
+            )
+            .animation(.easeOut(duration: 0.15), value: isSelected)
+    }
+}
+
+/// Outlined capsule chip used for multi-select lists ("bodybuilding", "tennis").
+struct OutlineChip: View {
+    let title: String
+    let isSelected: Bool
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+            .foregroundStyle(isSelected ? Color.white : Theme.textTertiary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(Capsule().fill(isSelected ? Color.white.opacity(0.08) : Color.clear))
+            .overlay(Capsule().strokeBorder(Color.white.opacity(isSelected ? 0.6 : 0.14), lineWidth: 1))
+            .animation(.easeOut(duration: 0.15), value: isSelected)
+    }
+}
+
+/// App mark + name, shown top-left in onboarding ("□ FrameFit").
+struct BrandMark: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .strokeBorder(Color.white, lineWidth: 1.6)
+                .frame(width: 18, height: 18)
+            Text("ForgeFit")
+                .font(.system(size: 13, weight: .medium))
+        }
+        .foregroundStyle(.white)
     }
 }

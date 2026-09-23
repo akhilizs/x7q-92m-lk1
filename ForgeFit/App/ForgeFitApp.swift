@@ -99,6 +99,7 @@ struct MainTabView: View {
                     let isSelected = selection == tab
                     tabContent(tab)
                         .opacity(isSelected ? 1 : 0)
+                        .zIndex(isSelected ? 1 : 0)
                         .allowsHitTesting(isSelected)
                         .accessibilityHidden(!isSelected)
                 }
@@ -136,12 +137,12 @@ struct MainTabView: View {
     }
 }
 
-/// Capsule tab bar floating above the content; the selected tab becomes a white pill.
+/// Capsule tab bar floating above the content; the selected tab becomes a white circle.
 struct FloatingTabBar: View {
     @Binding var selection: AppTab
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 14) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 let selected = selection == tab
                 Button {
@@ -150,34 +151,25 @@ struct FloatingTabBar: View {
                         Haptics.tap()
                     }
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: tab.symbol)
-                            .font(.system(size: 16, weight: .semibold))
-                        if selected {
-                            Text(tab.title)
-                                .font(.system(size: 14, weight: .semibold))
-                                .lineLimit(1)
-                                .fixedSize()
-                        }
-                    }
-                    .foregroundStyle(selected ? Color.black : Color.white.opacity(0.75))
-                    .padding(.horizontal, selected ? 16 : 0)
-                    .frame(minWidth: 48)
-                    .frame(height: 48)
-                    .background(Capsule().fill(selected ? Color.white : Color.clear))
-                    .contentShape(Capsule())
+                    Image(systemName: tab.symbol)
+                        .font(.system(size: 17, weight: selected ? .semibold : .regular))
+                        .foregroundStyle(selected ? Color.black : Color.white.opacity(0.7))
+                        .frame(width: 50, height: 50)
+                        .background(Circle().fill(selected ? Color.white : Color.clear))
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.title)
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        .padding(6)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
         .background(
             Capsule()
-                .fill(Color(white: 0.1))
+                .fill(Color(white: 0.09))
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
-                .shadow(color: .black.opacity(0.6), radius: 20, y: 8)
+                .shadow(color: .black.opacity(0.7), radius: 22, y: 8)
         )
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selection)
     }
