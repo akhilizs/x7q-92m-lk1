@@ -56,7 +56,7 @@ struct CoachChatView: View {
                         CoachOrb(size: 26, animating: model.isResponding)
                         VStack(alignment: .leading, spacing: 0) {
                             Text("Coach Forge").font(.subheadline.weight(.semibold))
-                            Text(model.isResponding ? "typing…" : store.aiModel.displayName)
+                            Text(model.isResponding ? "typing…" : (model.answeredBy ?? store.aiModel).displayName)
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textSecondary)
                         }
@@ -120,9 +120,9 @@ struct CoachChatView: View {
             }
             if !store.hasAPIKey {
                 VStack(spacing: 12) {
-                    Label("Connect Claude to start chatting", systemImage: "key.fill")
+                    Label("Connect Gemini to start chatting", systemImage: "key.fill")
                         .font(.subheadline.weight(.semibold))
-                    Text("The coach runs on Anthropic's Claude. Add your API key — it's stored securely in your iPhone's Keychain.")
+                    Text("The coach runs on Google's Gemini. Add your API key from Google AI Studio — it's stored securely in your iPhone's Keychain.")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -404,7 +404,7 @@ private struct ProposalCard: View {
     }
 }
 
-/// Renders the lightweight markdown Claude uses in chat (bold, italics, bullet lists).
+/// Renders the lightweight markdown the coach uses in chat (bold, italics, bullet lists).
 struct MarkdownText: View {
     let text: String
 

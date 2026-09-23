@@ -45,7 +45,7 @@ struct ProfileView: View {
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                         NavigationLink { AISettingsView() } label: {
-                            ActivityRow(symbol: "sparkles", title: "Claude connection",
+                            ActivityRow(symbol: "sparkles", title: "Gemini connection",
                                         subtitle: store.hasAPIKey ? "Connected · \(store.aiModel.displayName)" : "Not connected — add your API key")
                         }
                         .buttonStyle(PressableStyle())
@@ -86,7 +86,7 @@ struct ProfileView: View {
                             .frame(height: 50)
                             .background(Capsule().strokeBorder(Theme.danger.opacity(0.4)))
                     }
-                    Text("ForgeFit \(appVersion) · Your data stays on this device. AI requests go directly from your phone to Anthropic.")
+                    Text("ForgeFit \(appVersion) · Your data stays on this device. AI requests go directly from your phone to Google's Gemini API.")
                         .font(.caption)
                         .foregroundStyle(Theme.textTertiary)
                         .frame(maxWidth: .infinity)
@@ -384,13 +384,14 @@ private struct EditNotesView: View {
     }
 }
 
-/// API key + model selection for the Claude-powered coach.
+/// API key + model selection for the Gemini-powered coach.
 struct AISettingsView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     var showsDoneButton = false
     @State private var keyInput = ""
-    @State private var saved = false
+    @State private var checks: [AIModel: ModelCheck] = [:]
+    @State private var isChecking = false
 
     var body: some View {
         @Bindable var store = store
@@ -399,8 +400,8 @@ struct AISettingsView: View {
                 HStack(spacing: 14) {
                     CoachOrb(size: 48)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Powered by Claude").font(.headline)
-                        Text(store.hasAPIKey ? "Connected — your coach is ready." : "Add an Anthropic API key to enable AI plans and coach chat.")
+                        Text("Powered by Google Gemini").font(.headline)
+                        Text(store.hasAPIKey ? "Connected — your coach is ready." : "Add a Gemini API key to enable AI plans and coach chat.")
                             .font(.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -410,15 +411,15 @@ struct AISettingsView: View {
             .listRowBackground(Theme.surface)
 
             Section {
-                SecureField(store.hasAPIKey ? "••••••••  (saved)" : "sk-ant-…", text: $keyInput)
+                SecureField(store.hasAPIKey ? "••••••••  (saved)" : "AIza…", text: $keyInput)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .font(.system(.body, design: .monospaced))
                 Button {
                     store.setAPIKey(keyInput)
                     keyInput = ""
-                    saved = true
                     Haptics.success()
+                    Task { await runCheck() }
                 } label: {
                     Label("Save key", systemImage: "checkmark.shield.fill")
                 }
@@ -426,6 +427,7 @@ struct AISettingsView: View {
                 if store.hasAPIKey {
                     Button(role: .destructive) {
                         store.setAPIKey(nil)
+                        checks = [:]
                         Haptics.warning()
                     } label: {
                         Label("Remove key", systemImage: "trash")
@@ -433,18 +435,41 @@ struct AISettingsView: View {
                     }
                 }
             } header: {
-                Text("Anthropic API key")
+                Text("Gemini API key")
             } footer: {
-                Text("Create a key at console.anthropic.com. It's stored in the iOS Keychain on this device and only sent to api.anthropic.com. API usage is billed to your Anthropic account.")
+                Text("Create a free key in Google AI Studio (aistudio.google.com → Get API key). It's stored in the iOS Keychain on this device and only sent to Google's Gemini API. Usage beyond the free tier is billed to your Google account.")
             }
             .listRowBackground(Theme.surface)
 
+            if store.hasAPIKey {
+                Section {
+                    Button {
+                        Task { await runCheck() }
+                    } label: {
+                        HStack {
+                            Label(isChecking ? "Testing…" : "Test connection", systemImage: "bolt.horizontal.circle")
+                            Spacer()
+                            if isChecking { ProgressView() }
+                        }
+                    }
+                    .disabled(isChecking)
+                } header: {
+                    Text("Connection")
+                } footer: {
+                    Text("Sends a tiny request to each model to see which ones answer with your key right now.")
+                }
+                .listRowBackground(Theme.surface)
+            }
+
             Section {
                 Picker("Model", selection: $store.aiModel) {
-                    ForEach(ClaudeModel.allCases) { model in
-                        VStack(alignment: .leading, spacing: 2) {
+                    ForEach(AIModel.allCases) { model in
+                        VStack(alignment: .leading, spacing: 3) {
                             Text(model.displayName)
                             Text(model.blurb).font(.caption).foregroundStyle(Theme.textSecondary)
+                            if let check = checks[model] {
+                                ModelCheckLabel(check: check)
+                            }
                         }
                         .tag(model)
                     }
@@ -453,6 +478,8 @@ struct AISettingsView: View {
                 .labelsHidden()
             } header: {
                 Text("Model")
+            } footer: {
+                Text("If your model is busy or over its free limit, the coach automatically switches to another free Gemini model for that reply.")
             }
             .listRowBackground(Theme.surface)
         }
@@ -468,10 +495,57 @@ struct AISettingsView: View {
                 }
             }
         }
-        .alert("API key saved", isPresented: $saved) {
-            Button("OK") {}
-        } message: {
-            Text("Your AI coach is ready to go.")
+    }
+
+    private func runCheck() async {
+        guard let key = KeychainStore.apiKey, !isChecking else { return }
+        isChecking = true
+        checks = Dictionary(uniqueKeysWithValues: AIModel.allCases.map { ($0, ModelCheck.pending) })
+        for model in AIModel.allCases {
+            switch await GeminiClient.check(model: model, apiKey: key) {
+            case .success(let seconds): checks[model] = .ok(seconds)
+            case .failure(let error): checks[model] = .failed(error)
+            }
+        }
+        isChecking = false
+        if checks.values.contains(where: \.isOK) { Haptics.success() } else { Haptics.warning() }
+    }
+}
+
+enum ModelCheck {
+    case pending
+    case ok(TimeInterval)
+    case failed(GeminiAPIError)
+
+    var isOK: Bool {
+        if case .ok = self { return true }
+        return false
+    }
+}
+
+private struct ModelCheckLabel: View {
+    let check: ModelCheck
+
+    var body: some View {
+        switch check {
+        case .pending:
+            Label("Waiting…", systemImage: "clock")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Theme.textTertiary)
+        case .ok(let seconds):
+            Label("Working · \(String(format: "%.1f", seconds)) s", systemImage: "checkmark.circle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.sage)
+        case .failed(let error):
+            VStack(alignment: .leading, spacing: 2) {
+                Label(error.shortLabel, systemImage: "xmark.circle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.danger)
+                Text(error.detail)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textTertiary)
+                    .lineLimit(3)
+            }
         }
     }
 }

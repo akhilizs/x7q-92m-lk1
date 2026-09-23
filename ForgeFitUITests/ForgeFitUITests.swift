@@ -51,6 +51,8 @@ final class ForgeFitUITests: XCTestCase {
         tapButton(containing: "Continue")   // schedule -> equipment
         XCTAssertTrue(text(containing: "equipment").waitForExistence(timeout: 5))
         snap("03e-onboarding-equipment")
+        app.swipeUp()
+        snap("03f-onboarding-equipment-scrolled")
         tapButton(containing: "Continue")   // equipment -> injuries
         tapButton(containing: "Continue")   // injuries -> plan
         XCTAssertTrue(app.staticTexts["Your plan is ready, Alex!"].waitForExistence(timeout: 10))
@@ -120,6 +122,11 @@ final class ForgeFitUITests: XCTestCase {
         snap("16-profile")
         app.swipeUp()
         snap("16b-profile-bottom")
+        tapButton(containing: "Gemini connection")
+        XCTAssertTrue(app.navigationBars["AI Coach"].waitForExistence(timeout: 5))
+        snap("17-ai-settings")
+        app.swipeUp()
+        snap("17b-ai-models")
     }
 
     func testProgressWithHistory() {

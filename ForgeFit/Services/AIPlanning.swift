@@ -8,7 +8,7 @@ enum AIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .missingAPIKey: return "Add your Anthropic API key in Profile → AI Coach to use AI features."
+        case .missingAPIKey: return "Add your Gemini API key in Profile → AI Coach to use AI features."
         case .refused: return "The coach couldn't help with that request. Try rephrasing it."
         case .truncated: return "The response was cut off before it finished. Please try again."
         case .invalidPlan(let reason): return "The AI returned a plan the app couldn't use (\(reason)). Please try again."
@@ -18,10 +18,14 @@ enum AIError: LocalizedError {
 
 /// JSON schemas and parsing for AI-designed workout plans.
 enum PlanSchema {
-    static func exerciseItem(ids: [String]) -> [String: Any] {
+    /// `ids` restricts exercise_id to an enum and closes every object (strict structured
+    /// output). Without it the schema stays simple and the app validates IDs itself.
+    static func exerciseItem(ids: [String]?) -> [String: Any] {
+        var exerciseID: [String: Any] = ["type": "string",
+                                         "description": "exercise_id of an exercise from the EXERCISE CATALOG."]
+        if let ids { exerciseID["enum"] = ids }
         let properties: [String: Any] = [
-            "exercise_id": ["type": "string", "enum": ids,
-                            "description": "ID of an exercise from the catalog."] as [String: Any],
+            "exercise_id": exerciseID,
             "sets": ["type": "integer", "description": "Number of working sets (1-6)."] as [String: Any],
             "reps_min": ["type": "integer",
                          "description": "Low end of the rep range, or seconds for time-tracked exercises."] as [String: Any],
@@ -31,16 +35,15 @@ enum PlanSchema {
             "notes": ["type": "string",
                       "description": "Short cue or intensity target (e.g. 'RPE 8', '3 s lowering'). Empty string if none."] as [String: Any],
         ]
-        return [
+        return closed([
             "type": "object",
             "properties": properties,
             "required": ["exercise_id", "sets", "reps_min", "reps_max", "rest_seconds", "notes"],
-            "additionalProperties": false,
-        ]
+        ], if: ids != nil)
     }
 
-    static func plan(ids: [String], includeChangeSummary: Bool) -> [String: Any] {
-        let day: [String: Any] = [
+    static func plan(ids: [String]?, includeChangeSummary: Bool) -> [String: Any] {
+        let day: [String: Any] = closed([
             "type": "object",
             "properties": [
                 "name": ["type": "string", "description": "Short day name, e.g. 'Push' or 'Lower Power'."] as [String: Any],
@@ -48,8 +51,7 @@ enum PlanSchema {
                 "exercises": ["type": "array", "items": exerciseItem(ids: ids)] as [String: Any],
             ] as [String: Any],
             "required": ["name", "focus", "exercises"],
-            "additionalProperties": false,
-        ]
+        ], if: ids != nil)
         var properties: [String: Any] = [
             "name": ["type": "string", "description": "Short, motivating plan name (max 4 words)."] as [String: Any],
             "summary": ["type": "string",
@@ -64,12 +66,17 @@ enum PlanSchema {
             ] as [String: Any]
             required.append("change_summary")
         }
-        return [
+        return closed([
             "type": "object",
             "properties": properties,
             "required": required,
-            "additionalProperties": false,
-        ]
+        ], if: ids != nil)
+    }
+
+    private static func closed(_ object: [String: Any], if strict: Bool) -> [String: Any] {
+        var object = object
+        if strict { object["additionalProperties"] = false }
+        return object
     }
 
     private struct Payload: Decodable {
@@ -149,7 +156,7 @@ enum PlanSchema {
     }
 }
 
-/// Designs complete workout plans with Claude.
+/// Designs complete workout plans with Gemini.
 @MainActor
 enum AIPlanDesigner {
     static let systemPrompt = """
@@ -182,10 +189,10 @@ enum AIPlanDesigner {
         var notes: String
     }
 
-    static func design(_ request: Request, profile: UserProfile, model: ClaudeModel,
+    static func design(_ request: Request, profile: UserProfile, model: AIModel,
                        onProgress: (String) -> Void) async throws -> WorkoutPlan {
         guard let key = KeychainStore.apiKey else { throw AIError.missingAPIKey }
-        let client = ClaudeClient(apiKey: key, model: model)
+        let client = GeminiClient(apiKey: key, model: model)
 
         let catalog = ExerciseLibrary.available(with: request.equipment.union([.bodyweight]))
         let ids = catalog.map(\.id)
@@ -209,21 +216,23 @@ enum AIPlanDesigner {
         message += "\n\nEXERCISE CATALOG (id | name | primary muscle | equipment | tracking | type)\n"
         message += ExerciseLibrary.promptCatalog(catalog)
 
-        var outputConfig: [String: Any] = [
-            "format": ["type": "json_schema", "schema": PlanSchema.plan(ids: ids, includeChangeSummary: false)] as [String: Any],
-        ]
-        if model.supportsEffort { outputConfig["effort"] = "high" }
-
-        let params: [String: Any] = [
-            "max_tokens": model.maxOutputTokens,
-            "system": systemPrompt,
-            "messages": [["role": "user", "content": message] as [String: Any]],
-            "output_config": outputConfig,
-        ]
+        func body(strict: Bool) -> [String: Any] {
+            let generationConfig: [String: Any] = [
+                "responseMimeType": "application/json",
+                "responseJsonSchema": PlanSchema.plan(ids: strict ? ids : nil, includeChangeSummary: false),
+                "thinkingConfig": ["thinkingLevel": "medium"] as [String: Any],
+                "maxOutputTokens": 32768,
+            ]
+            return [
+                "systemInstruction": ["parts": [["text": systemPrompt]]] as [String: Any],
+                "contents": [["role": "user", "parts": [["text": message]]] as [String: Any]],
+                "generationConfig": generationConfig,
+            ]
+        }
 
         onProgress("Analyzing your goals…")
         var json = ""
-        let response = try await client.stream(params) { event in
+        func handle(_ event: AIStreamEvent) {
             switch event {
             case .thinking:
                 if json.isEmpty { onProgress("Thinking through your program…") }
@@ -236,16 +245,22 @@ enum AIPlanDesigner {
                 } else {
                     onProgress("Structuring your week…")
                 }
-            default:
+            case .toolStarted:
                 break
             }
         }
 
-        switch response.stopReason {
-        case "refusal": throw AIError.refused
-        case "max_tokens": throw AIError.truncated
-        default: break
+        let response: GeminiResponse
+        do {
+            response = try await client.stream(body(strict: true), onEvent: handle)
+        } catch let error where GeminiClient.mayBeRequestProblem(error) && json.isEmpty {
+            // Some models reject the strict exercise_id enum; the app validates IDs itself anyway.
+            onProgress("Retrying with a simpler request…")
+            response = try await client.stream(body(strict: false), onEvent: handle)
         }
+
+        if response.wasBlocked { throw AIError.refused }
+        if response.finishReason == "MAX_TOKENS" { throw AIError.truncated }
         onProgress("Finalizing…")
         return try PlanSchema.parse(Data(response.text.utf8), goal: request.goal).plan
     }

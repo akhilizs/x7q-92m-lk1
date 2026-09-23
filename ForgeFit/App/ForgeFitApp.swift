@@ -102,7 +102,10 @@ struct MainTabView: View {
 
             if !keyboardVisible {
                 FloatingTabBar(selection: $selection)
+                    .padding(.top, 30)
                     .padding(.bottom, 6)
+                    .frame(maxWidth: .infinity)
+                    .background(BottomBlurBackground())
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

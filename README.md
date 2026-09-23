@@ -1,6 +1,6 @@
 # ForgeFit — AI Gym Coach for iPhone
 
-ForgeFit is a native SwiftUI iPhone app that builds your workout plan, tracks every set, and has an AI coach (powered by Anthropic's Claude) you can talk to about your struggles — it rewrites your plan to fit.
+ForgeFit is a native SwiftUI iPhone app that builds your workout plan, tracks every set, and has an AI coach (powered by Google Gemini) you can talk to about your struggles — it rewrites your plan to fit.
 
 <p align="center">
   <img src="docs/screenshots/welcome.jpg" width="200">
@@ -21,7 +21,7 @@ ForgeFit is a native SwiftUI iPhone app that builds your workout plan, tracks ev
 - Name, gender, age, height and weight (number wheels, kg/lb), main goal, experience, favorite sports, schedule, equipment and injuries. The answers feed the plan generator and the AI coach.
 
 **Plans**
-- **AI plan generator**: pick your goal, experience, days per week, session length, the **machines & equipment you have**, and optional focus muscles or notes (e.g. "bad left knee"). Claude designs a full weekly program with sets, rep ranges, rest times and cues.
+- **AI plan generator**: pick your goal, experience, days per week, session length, the **machines & equipment you have**, and optional focus muscles or notes (e.g. "bad left knee"). Gemini designs a full weekly program with sets, rep ranges, rest times and cues.
 - **Instant generator**: the same inputs, built on-device with no internet or API key needed.
 - **Build your own**: create days, add exercises from a 100+ exercise library (filter by muscle and your equipment), and set sets, reps and rest for each one.
 - Edit, duplicate and switch between saved plans. The app rotates to the next day after each workout.
@@ -61,11 +61,14 @@ The IPA is **unsigned**. Install it with a sideloading tool that signs it with y
 
 ## Enable the AI coach
 
-1. Create an API key at [console.anthropic.com](https://console.anthropic.com).
+1. Create a free API key in [Google AI Studio](https://aistudio.google.com) (**Get API key**).
 2. In the app, open **Profile → AI Coach** (or tap **Add API key** in the Coach tab) and paste the key.
-3. Pick a model. **Claude Opus 5** is the default. **Sonnet 5** and **Haiku 4.5** are faster and cheaper.
+3. Tap **Test connection** to see which models answer with your key right now.
+4. Pick a model. **Gemini 3.8 Flash** is the default. Gemini 3.5 Flash, 3.5 Flash-Lite and 3.1 Flash-Lite are also on the free tier. **Gemini 3.1 Pro (preview)** reasons more deeply but needs a paid key.
 
-The key is stored in the iOS Keychain on your device. Requests go straight from your phone to `api.anthropic.com`, and usage is billed to your Anthropic account. Without a key, everything except AI generation and chat still works offline.
+If the chosen model is busy (503), over its free-tier limit (429) or not available for your key (404), the app automatically tries the next free model (3.8 Flash → 3.5 Flash → 3.5 Flash-Lite → 3.1 Flash-Lite). It shows Google's own error message if none of them answer.
+
+The key is stored in the iOS Keychain on your device. Requests go straight from your phone to Google's Gemini API, and usage beyond the free tier is billed to your Google account. Without a key, everything except AI generation and chat still works offline.
 
 ## Build it yourself (Mac)
 
@@ -88,7 +91,7 @@ ForgeFit/
   Services/
     AppStore.swift              @Observable state + JSON persistence + stats
     PlanGenerator.swift         Offline rule-based plan generator
-    ClaudeClient.swift          Streaming Claude Messages API client (SSE)
+    GeminiClient.swift          Streaming Gemini generateContent client (SSE) with free-model fallback
     AIPlanning.swift            AI plan design (structured JSON output) + validation
     CoachViewModel.swift        Coach chat with the update_workout_plan tool
     KeychainStore.swift         API key storage
@@ -101,6 +104,5 @@ ForgeFitUITests/                Simulator UI tests that walk the main flows and 
 ```
 
 ### How the AI works
-- **Plan generation** uses Claude's structured outputs (`output_config.format` with a JSON schema). Exercise IDs are an `enum` restricted to the exercises your equipment allows, so every plan the app gets back can be used.
-- **Coach chat** streams responses and gives Claude one tool, `update_workout_plan`, which takes the complete revised plan. The app validates it and shows it as an "Apply" card instead of changing your plan silently.
-- On Claude Opus 5, requests opt into server-side refusal fallbacks (`fallbacks: "default"`). Prompt caching is used for the static coach instructions and the exercise catalog.
+- **Plan generation** uses Gemini's structured output (`responseMimeType: application/json` with `responseJsonSchema`). Exercise IDs are an `enum` restricted to the exercises your equipment allows. If a model rejects that strict schema, the app retries with a simpler one and validates the IDs itself.
+- **Coach chat** streams replies and gives Gemini one function, `update_workout_plan`, which takes the complete revised plan. Its schema is kept simple, and the app checks every exercise ID against the catalog. The app validates it and shows it as an "Apply" card instead of changing your plan silently. Model turns are replayed verbatim so Gemini 3 thought signatures are preserved across function calls.

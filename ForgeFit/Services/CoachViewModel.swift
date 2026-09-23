@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Drives the AI coach chat: streams Claude's replies and turns
+/// Drives the AI coach chat: streams Gemini's replies and turns
 /// `update_workout_plan` tool calls into plan proposals the user can apply.
 @Observable
 @MainActor
@@ -9,8 +9,13 @@ final class CoachViewModel {
     var isResponding = false
     var liveText = ""
     var status: String?
+    /// The Gemini model that wrote the latest reply (it can differ from the chosen
+    /// one when that model was busy).
+    var answeredBy: AIModel?
 
     @ObservationIgnored private var task: Task<Void, Never>?
+    /// Set when requests with the plan-update function kept failing but plain chat worked.
+    @ObservationIgnored private var planUpdatesPausedUntil = Date.distantPast
 
     static let suggestions: [String] = [
         "My knees hurt when I squat",
@@ -58,18 +63,33 @@ final class CoachViewModel {
 
         let historyBefore = store.chatHistory
         var turns = Self.trimmed(historyBefore)
-        turns.append(APITurn(role: "user", content: [["type": "text", "text": trimmed]]))
+        turns.append(APITurn(role: "user", content: [["text": trimmed]]))
 
         isResponding = true
         liveText = ""
         status = "Thinking…"
         Haptics.tap()
 
-        let client = ClaudeClient(apiKey: key, model: store.aiModel)
+        let model = store.aiModel
         task = Task { [weak self] in
             guard let self else { return }
             do {
-                let result = try await self.run(turns: turns, client: client, store: store)
+                var client = GeminiClient(apiKey: key, model: model)
+                let result: RunResult
+                if Date() < self.planUpdatesPausedUntil {
+                    result = try await self.run(turns: Self.textOnly(turns), client: client, store: store, planUpdates: false)
+                } else {
+                    do {
+                        result = try await self.run(turns: turns, client: client, store: store, planUpdates: true)
+                    } catch let error where GeminiClient.mayBeRequestProblem(error) && self.liveText.isEmpty {
+                        // Every model rejected the request with the plan-update function attached.
+                        // Answer as a plain chat instead of failing.
+                        client = GeminiClient(apiKey: key, model: model)
+                        result = try await self.run(turns: Self.textOnly(turns), client: client, store: store, planUpdates: false)
+                        self.planUpdatesPausedUntil = Date().addingTimeInterval(600)
+                    }
+                }
+                self.answeredBy = client.model
                 store.chatHistory = result.turns
                 let reply = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 store.chatMessages.append(ChatMessage(role: .assistant,
@@ -108,11 +128,23 @@ final class CoachViewModel {
         while start < turns.count {
             let turn = turns[start]
             let isPlainUser = turn.role == "user"
-                && !turn.content.contains { $0["type"] as? String == "tool_result" }
+                && !turn.content.contains { $0["functionResponse"] != nil }
             if isPlainUser { break }
             start += 1
         }
         return Array(turns[start...])
+    }
+
+    /// The conversation without function calls, function results or thought signatures,
+    /// for a request that has no tools attached.
+    private static func textOnly(_ turns: [APITurn]) -> [APITurn] {
+        turns.compactMap { turn in
+            let parts: [[String: Any]] = turn.content.compactMap { part in
+                guard part["thought"] as? Bool != true, let text = part["text"] as? String, !text.isEmpty else { return nil }
+                return ["text": text]
+            }
+            return parts.isEmpty ? nil : APITurn(role: turn.role, content: parts)
+        }
     }
 
     // MARK: - Conversation loop
@@ -123,7 +155,8 @@ final class CoachViewModel {
         var proposal: PlanProposal?
     }
 
-    private func run(turns initialTurns: [APITurn], client: ClaudeClient, store: AppStore) async throws -> RunResult {
+    private func run(turns initialTurns: [APITurn], client: GeminiClient, store: AppStore,
+                     planUpdates: Bool) async throws -> RunResult {
         var turns = initialTurns
         var text = ""
         var proposal: PlanProposal?
@@ -138,57 +171,66 @@ final class CoachViewModel {
             boredom, a new goal, or an explicit request to change the plan. Always send the COMPLETE plan with \
             every day and every exercise, not just the parts that changed.
             """,
-            "eager_input_streaming": true,
-            "input_schema": PlanSchema.plan(ids: catalog.map(\.id), includeChangeSummary: true),
+            // Kept simple (no exercise_id enum): the app validates IDs against the catalog itself.
+            "parameters": PlanSchema.plan(ids: nil, includeChangeSummary: true),
         ]
 
         let staticSystem = Self.staticInstructions
             + "\n\nEXERCISE CATALOG (id | name | primary muscle | equipment | tracking | type)\n"
             + ExerciseLibrary.promptCatalog(catalog)
-        let system: [[String: Any]] = [
-            ["type": "text", "text": staticSystem, "cache_control": ["type": "ephemeral"]] as [String: Any],
-            ["type": "text", "text": store.coachContext()] as [String: Any],
-        ]
+        var systemParts: [[String: Any]] = [["text": staticSystem], ["text": store.coachContext()]]
+        if !planUpdates {
+            systemParts.append(["text": """
+            The update_workout_plan tool is unavailable for this reply. Don't claim to have changed the plan. \
+            If a change would help, describe it briefly and tell the athlete they can edit their plan in the Plans tab.
+            """])
+        }
+        let systemInstruction: [String: Any] = ["parts": systemParts]
 
         for _ in 0..<4 {
-            var params: [String: Any] = [
-                "max_tokens": client.model.maxOutputTokens,
-                "system": system,
-                "tools": [tool],
-                "messages": turns.map(\.asRequestMessage),
-                "cache_control": ["type": "ephemeral"],
+            var body: [String: Any] = [
+                "systemInstruction": systemInstruction,
+                "contents": turns.map(\.asGeminiContent),
+                "generationConfig": ["thinkingConfig": ["thinkingLevel": "low"] as [String: Any]] as [String: Any],
             ]
-            if client.model.supportsEffort {
-                params["output_config"] = ["effort": "medium"]
+            if planUpdates {
+                body["tools"] = [["functionDeclarations": [tool]] as [String: Any]]
+                body["toolConfig"] = ["functionCallingConfig": ["mode": "AUTO"]] as [String: Any]
+                body["generationConfig"] = [
+                    "thinkingConfig": ["thinkingLevel": "low"] as [String: Any],
+                    "maxOutputTokens": 32768,
+                ] as [String: Any]
             }
 
-            let response = try await client.stream(params) { event in
+            let response = try await client.stream(body) { event in
                 self.handle(event)
             }
 
-            if response.stopReason == "refusal" { throw AIError.refused }
+            if response.wasBlocked { throw AIError.refused }
 
             let replyText = response.text
             if !replyText.isEmpty {
                 text += (text.isEmpty ? "" : "\n\n") + replyText
             }
 
-            var assistantContent = response.historyContent
-            if assistantContent.isEmpty {
-                assistantContent = [["type": "text", "text": replyText.isEmpty ? "…" : replyText]]
+            // The model turn is replayed verbatim so Gemini 3 thought signatures survive.
+            var modelParts = response.historyParts
+            if modelParts.isEmpty {
+                modelParts = [["text": replyText.isEmpty ? "…" : replyText]]
             }
-            turns.append(APITurn(role: "assistant", content: assistantContent))
+            turns.append(APITurn(role: "model", content: modelParts))
 
-            let toolUses = response.toolUses
-            guard response.stopReason == "tool_use", !toolUses.isEmpty else {
-                if response.stopReason == "max_tokens", text.isEmpty { throw AIError.truncated }
+            let calls = response.functionCalls
+            guard !calls.isEmpty else {
+                if response.finishReason == "MALFORMED_FUNCTION_CALL", text.isEmpty {
+                    throw AIError.invalidPlan("the coach sent an incomplete plan update")
+                }
+                if response.finishReason == "MAX_TOKENS", text.isEmpty { throw AIError.truncated }
                 return RunResult(turns: turns, text: text, proposal: proposal)
             }
 
-            var results: [[String: Any]] = []
-            for use in toolUses {
-                results.append(toolResult(for: use, goal: store.activePlan?.goal ?? store.profile.goal, proposal: &proposal))
-            }
+            let results = calls.map { functionResponse(for: $0, goal: store.activePlan?.goal ?? store.profile.goal,
+                                                        proposal: &proposal) }
             turns.append(APITurn(role: "user", content: results))
             if !liveText.isEmpty { liveText += "\n\n" }
             status = "Wrapping up…"
@@ -196,28 +238,25 @@ final class CoachViewModel {
         return RunResult(turns: turns, text: text, proposal: proposal)
     }
 
-    private func toolResult(for use: ToolUse, goal: FitnessGoal, proposal: inout PlanProposal?) -> [String: Any] {
-        guard use.name == "update_workout_plan" else {
-            return ["type": "tool_result", "tool_use_id": use.id, "is_error": true,
-                    "content": "Unknown tool \(use.name)."]
+    private func functionResponse(for call: FunctionCall, goal: FitnessGoal, proposal: inout PlanProposal?) -> [String: Any] {
+        let result: [String: Any]
+        if call.name != "update_workout_plan" {
+            result = ["error": "Unknown function \(call.name)."]
+        } else {
+            do {
+                let parsed = try PlanSchema.parse(toolInput: call.args, goal: goal)
+                proposal = PlanProposal(plan: parsed.plan, changeSummary: parsed.changeSummary)
+                result = ["result": "The revised plan is now shown to the athlete as a card with an Apply button. Don't repeat the plan; briefly explain the key changes and why."]
+            } catch {
+                result = ["error": "The plan could not be used: \(error.localizedDescription). Check that every exercise_id comes from the catalog and try again."]
+            }
         }
-        guard let input = use.input else {
-            let wrapped = (try? JSONSerialization.data(withJSONObject: ["INVALID_JSON": use.rawInput]))
-                .flatMap { String(data: $0, encoding: .utf8) } ?? "{\"INVALID_JSON\": \"\"}"
-            return ["type": "tool_result", "tool_use_id": use.id, "is_error": true, "content": wrapped]
-        }
-        do {
-            let parsed = try PlanSchema.parse(toolInput: input, goal: goal)
-            proposal = PlanProposal(plan: parsed.plan, changeSummary: parsed.changeSummary)
-            return ["type": "tool_result", "tool_use_id": use.id,
-                    "content": "The revised plan is now shown to the athlete as a card with an Apply button. Don't repeat the plan; briefly explain the key changes and why."]
-        } catch {
-            return ["type": "tool_result", "tool_use_id": use.id, "is_error": true,
-                    "content": "The plan could not be used: \(error.localizedDescription). Check that every exercise_id comes from the catalog and try again."]
-        }
+        var response: [String: Any] = ["name": call.name, "response": result]
+        if let id = call.id { response["id"] = id }
+        return ["functionResponse": response]
     }
 
-    private func handle(_ event: ClaudeStreamEvent) {
+    private func handle(_ event: AIStreamEvent) {
         switch event {
         case .thinking:
             if liveText.isEmpty { status = "Thinking…" }
@@ -227,10 +266,6 @@ final class CoachViewModel {
         case .toolStarted:
             status = "Rewriting your plan…"
             Haptics.tap()
-        case .toolInputDelta(_, let fragment):
-            if fragment.contains("exercise_id") {
-                status = "Rewriting your plan…"
-            }
         }
     }
 }

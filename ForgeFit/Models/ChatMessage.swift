@@ -27,8 +27,8 @@ struct ChatMessage: Identifiable, Codable, Hashable {
     var isError = false
 }
 
-/// One raw turn of the Claude Messages API conversation. The content array is
-/// kept verbatim (thinking blocks, tool calls, ...) so it can be replayed exactly.
+/// One raw turn of the Gemini conversation (`role` is "user" or "model"). The parts
+/// are kept verbatim (thought signatures, function calls, ...) so they can be replayed exactly.
 struct APITurn: Codable, Hashable {
     var role: String
     var contentJSON: Data
@@ -42,7 +42,7 @@ struct APITurn: Codable, Hashable {
         (try? JSONSerialization.jsonObject(with: contentJSON)) as? [[String: Any]] ?? []
     }
 
-    var asRequestMessage: [String: Any] {
-        ["role": role, "content": content]
+    var asGeminiContent: [String: Any] {
+        ["role": role, "parts": content]
     }
 }

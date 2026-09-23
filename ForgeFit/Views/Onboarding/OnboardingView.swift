@@ -30,7 +30,12 @@ struct OnboardingView: View {
                         .id(step)
                         .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
                                                 removal: .move(edge: .leading).combined(with: .opacity)))
+                }
+                // Content scrolls underneath the footer and blurs out instead of being cut off.
+                .safeAreaInset(edge: .bottom, spacing: 0) {
                     footer
+                        .padding(.top, 36)
+                        .background(BottomBlurBackground())
                 }
                 .appBackground()
                 .transition(.opacity)
@@ -321,7 +326,7 @@ struct OnboardingView: View {
                     .pastelCard(Theme.paper)
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "sparkles")
-                        Text("Want it even more personal? Add your Anthropic API key in Profile to unlock the AI coach — it can rebuild this plan and adapt it as you go.")
+                        Text("Want it even more personal? Add your Gemini API key in Profile to unlock the AI coach — it can rebuild this plan and adapt it as you go.")
                             .font(.footnote)
                     }
                     .foregroundStyle(Theme.textSecondary)
