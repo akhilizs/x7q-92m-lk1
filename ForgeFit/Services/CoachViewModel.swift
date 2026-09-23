@@ -9,6 +9,9 @@ final class CoachViewModel {
     var isResponding = false
     var liveText = ""
     var status: String?
+    /// The Gemini model that wrote the latest reply (it can differ from the chosen
+    /// one when that model was busy).
+    var answeredBy: AIModel?
 
     @ObservationIgnored private var task: Task<Void, Never>?
 
@@ -70,6 +73,7 @@ final class CoachViewModel {
             guard let self else { return }
             do {
                 let result = try await self.run(turns: turns, client: client, store: store)
+                self.answeredBy = client.model
                 store.chatHistory = result.turns
                 let reply = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 store.chatMessages.append(ChatMessage(role: .assistant,
@@ -138,7 +142,8 @@ final class CoachViewModel {
             boredom, a new goal, or an explicit request to change the plan. Always send the COMPLETE plan with \
             every day and every exercise, not just the parts that changed.
             """,
-            "parametersJsonSchema": PlanSchema.plan(ids: catalog.map(\.id), includeChangeSummary: true),
+            // Kept simple (no exercise_id enum): the app validates IDs against the catalog itself.
+            "parametersJsonSchema": PlanSchema.plan(ids: nil, includeChangeSummary: true),
         ]
 
         let staticSystem = Self.staticInstructions

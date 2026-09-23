@@ -56,7 +56,7 @@ struct CoachChatView: View {
                         CoachOrb(size: 26, animating: model.isResponding)
                         VStack(alignment: .leading, spacing: 0) {
                             Text("Coach Forge").font(.subheadline.weight(.semibold))
-                            Text(model.isResponding ? "typing…" : store.aiModel.displayName)
+                            Text(model.isResponding ? "typing…" : (model.answeredBy ?? store.aiModel).displayName)
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textSecondary)
                         }

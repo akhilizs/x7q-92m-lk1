@@ -122,6 +122,11 @@ final class ForgeFitUITests: XCTestCase {
         snap("16-profile")
         app.swipeUp()
         snap("16b-profile-bottom")
+        tapButton(containing: "Gemini connection")
+        XCTAssertTrue(app.navigationBars["AI Coach"].waitForExistence(timeout: 5))
+        snap("17-ai-settings")
+        app.swipeUp()
+        snap("17b-ai-models")
     }
 
     func testProgressWithHistory() {
