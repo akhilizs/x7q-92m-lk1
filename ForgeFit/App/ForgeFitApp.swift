@@ -88,23 +88,17 @@ struct MainTabView: View {
     @Environment(AppStore.self) private var store
     @State private var selection: AppTab = .home
     @State private var keyboardVisible = false
+    @State private var coach = CoachViewModel()
 
     var body: some View {
         @Bindable var store = store
         ZStack(alignment: .bottom) {
-            // All tabs stay alive (keeping their navigation and scroll state);
-            // only the selected one is visible and interactive.
-            ZStack {
-                ForEach(AppTab.allCases, id: \.self) { tab in
-                    let isSelected = selection == tab
-                    tabContent(tab)
-                        .opacity(isSelected ? 1 : 0)
-                        .zIndex(isSelected ? 1 : 0)
-                        .allowsHitTesting(isSelected)
-                        .accessibilityHidden(!isSelected)
-                }
-            }
-            .environment(\.floatingBarSpace, keyboardVisible ? 0 : 76)
+            // Only the selected tab is in the hierarchy, so hidden tabs never
+            // intercept taps or VoiceOver focus.
+            tabContent(selection)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .environment(\.floatingBarSpace, keyboardVisible ? 0 : 76)
+                .environment(coach)
 
             if !keyboardVisible {
                 FloatingTabBar(selection: $selection)

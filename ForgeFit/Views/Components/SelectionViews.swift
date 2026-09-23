@@ -279,7 +279,9 @@ struct NumberWheel: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: 0) {
+            // A plain VStack (not lazy) gives exact row positions, so the initial
+            // value lands precisely in the centre slot.
+            VStack(spacing: 0) {
                 ForEach(Array(range), id: \.self) { number in
                     let distance = abs(number - (position ?? value))
                     HStack(alignment: .lastTextBaseline, spacing: 4) {
@@ -302,7 +304,7 @@ struct NumberWheel: View {
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.viewAligned)
-        .scrollPosition(id: $position)
+        .scrollPosition(id: $position, anchor: .center)
         .safeAreaPadding(.vertical, (height - itemHeight) / 2)
         .frame(height: height)
         .animation(.easeOut(duration: 0.15), value: position)

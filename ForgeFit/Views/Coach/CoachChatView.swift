@@ -2,7 +2,8 @@ import SwiftUI
 
 struct CoachChatView: View {
     @Environment(AppStore.self) private var store
-    @State private var model = CoachViewModel()
+    /// Owned by the tab container so a streaming reply survives tab switches.
+    @Environment(CoachViewModel.self) private var model
     @State private var input = ""
     @State private var showKeySheet = false
     @State private var previewPlan: WorkoutPlan?
