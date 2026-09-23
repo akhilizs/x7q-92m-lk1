@@ -34,8 +34,9 @@ create policy "Users delete their own data" on public.user_data
   for delete to authenticated
   using ((select auth.uid()) = user_id);
 
+-- Signed-in users only need to read and write their own row; visitors get nothing.
+revoke all on public.user_data from anon, authenticated;
 grant select, insert, update, delete on public.user_data to authenticated;
-revoke all on public.user_data from anon;
 
 -- Lets people delete their own account from the app. Their row above is removed
 -- with it (on delete cascade).
