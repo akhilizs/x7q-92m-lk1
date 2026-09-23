@@ -13,6 +13,14 @@ enum PlanSource: String, Codable {
         }
     }
 
+    var shortLabel: String {
+        switch self {
+        case .ai: return "AI"
+        case .generated: return "Auto"
+        case .custom: return "Custom"
+        }
+    }
+
     var symbol: String {
         switch self {
         case .ai: return "sparkles"

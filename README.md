@@ -2,6 +2,19 @@
 
 ForgeFit is a native SwiftUI iPhone app that builds your workout plan, tracks every set, and has an AI coach (powered by Anthropic's Claude) you can talk to about your struggles — it rewrites your plan to fit.
 
+<p align="center">
+  <img src="docs/screenshots/home.jpg" width="200">
+  <img src="docs/screenshots/workout.jpg" width="200">
+  <img src="docs/screenshots/coach.jpg" width="200">
+  <img src="docs/screenshots/charts.jpg" width="200">
+</p>
+<p align="center">
+  <img src="docs/screenshots/equipment.jpg" width="200">
+  <img src="docs/screenshots/plan.jpg" width="200">
+  <img src="docs/screenshots/progress.jpg" width="200">
+  <img src="docs/screenshots/history.jpg" width="200">
+</p>
+
 ## Features
 
 **Plans**
@@ -31,7 +44,7 @@ ForgeFit is a native SwiftUI iPhone app that builds your workout plan, tracks ev
 
 ## Get the IPA
 
-Every push runs the **Build iOS IPA** GitHub Action on a macOS runner:
+Every push runs the **Build iOS IPA** GitHub Action on a macOS runner (the **UI Tests & Screenshots** workflow also runs the app on an iPhone simulator and uploads screenshots):
 
 1. Go to **Actions → Build iOS IPA → latest run**.
 2. Download the **ForgeFit-ipa** artifact and unzip it to get `ForgeFit.ipa`.
@@ -77,7 +90,9 @@ ForgeFit/
     RestNotifier.swift          Rest-timer notifications
   Theme/                        Colors, gradients, button styles, haptics
   Views/                        Onboarding, Home, Plans, Workout, Progress, Coach, Profile
+ForgeFitUITests/                Simulator UI tests that walk the main flows and save screenshots
 .github/workflows/build-ipa.yml CI that builds the unsigned IPA
+.github/workflows/ui-tests.yml  CI that runs the UI tests and uploads screenshots
 ```
 
 ### How the AI works

@@ -346,12 +346,21 @@ final class AppStore {
         return best.values.sorted { $0.estimatedOneRepMax > $1.estimatedOneRepMax }
     }
 
+    /// Weighted exercises the user has logged, most frequent first (ties go to the heavier lift).
     var trackedExerciseIDs: [String] {
         var counts: [String: Int] = [:]
+        var best: [String: Double] = [:]
         for s in sessions {
-            for ex in s.exercises where ex.tracking == .weightReps { counts[ex.exerciseID, default: 0] += 1 }
+            for ex in s.exercises where ex.tracking == .weightReps {
+                counts[ex.exerciseID, default: 0] += 1
+                best[ex.exerciseID] = max(best[ex.exerciseID] ?? 0, ex.bestEstimatedOneRepMax)
+            }
         }
-        return counts.sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }.map(\.key)
+        return counts.keys.sorted { a, b in
+            if counts[a] != counts[b] { return counts[a, default: 0] > counts[b, default: 0] }
+            if best[a] != best[b] { return best[a, default: 0] > best[b, default: 0] }
+            return a < b
+        }
     }
 
     func progression(for exerciseID: String) -> [ExercisePoint] {

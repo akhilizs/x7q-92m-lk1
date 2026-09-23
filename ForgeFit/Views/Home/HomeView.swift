@@ -209,7 +209,7 @@ struct UpNextCard: View {
                 HStack(spacing: 8) {
                     heroPill("\(day.exercises.count) exercises", symbol: "list.bullet")
                     heroPill("~\(day.estimatedMinutes) min", symbol: "clock.fill")
-                    heroPill(plan.source.label, symbol: plan.source.symbol)
+                    heroPill(plan.source.shortLabel, symbol: plan.source.symbol)
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(day.exercises.prefix(4)) { item in
