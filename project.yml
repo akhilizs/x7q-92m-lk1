@@ -1,0 +1,55 @@
+name: ForgeFit
+options:
+  bundleIdPrefix: com.forgefit
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+
+targets:
+  ForgeFit:
+    type: application
+    platform: iOS
+    sources:
+      - path: ForgeFit
+    info:
+      path: ForgeFit/Info.plist
+      properties:
+        CFBundleDisplayName: ForgeFit
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIUserInterfaceStyle: Dark
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.forgefit.app
+        PRODUCT_NAME: ForgeFit
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_PREVIEWS: YES
+        CODE_SIGN_STYLE: Automatic
+
+schemes:
+  ForgeFit:
+    build:
+      targets:
+        ForgeFit: all
+    run:
+      config: Debug
+    archive:
+      config: Release
