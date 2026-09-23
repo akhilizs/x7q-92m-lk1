@@ -3,6 +3,13 @@ name: UI Tests & Screenshots
 on:
   workflow_dispatch:
   pull_request:
+  push:
+    branches: ["claude/**"]
+    paths:
+      - "ForgeFit/**"
+      - "ForgeFitUITests/**"
+      - "project.yml"
+      - ".github/workflows/ui-tests.yml"
 
 jobs:
   ui-tests:
