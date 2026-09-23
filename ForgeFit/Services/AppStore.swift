@@ -43,7 +43,10 @@ final class AppStore {
         let url = dir.appendingPathComponent("forgefit-data.json")
         fileURL = url
 
-        let snapshot = (try? Data(contentsOf: url))
+        // UI tests start from a clean slate (and optionally with sample history).
+        let arguments = ProcessInfo.processInfo.arguments
+        let resetForTests = arguments.contains("-uiTestReset")
+        let snapshot = resetForTests ? nil : (try? Data(contentsOf: url))
             .flatMap { try? Self.decoder.decode(Snapshot.self, from: $0) }
 
         hasOnboarded = snapshot?.hasOnboarded ?? false
@@ -56,6 +59,10 @@ final class AppStore {
         chatMessages = snapshot?.chatMessages ?? []
         chatHistory = snapshot?.chatHistory ?? []
         aiModel = snapshot?.aiModel ?? .opus5
+
+        if arguments.contains("-uiTestDemoHistory") {
+            DemoData.seed(self)
+        }
     }
 
     // MARK: Persistence

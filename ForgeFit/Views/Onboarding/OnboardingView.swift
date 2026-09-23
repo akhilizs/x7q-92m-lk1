@@ -44,6 +44,7 @@ struct OnboardingView: View {
                     .background(Circle().fill(Theme.surfaceRaised))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Back")
             ProgressBar(value: Double(step.rawValue) / Double(Step.allCases.count - 2))
         }
         .padding(.horizontal, 20)

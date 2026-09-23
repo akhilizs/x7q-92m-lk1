@@ -173,6 +173,7 @@ struct CoachChatView: View {
                         .background(Circle().fill(Theme.surfaceRaised))
                 }
                 .buttonStyle(PressableStyle())
+                .accessibilityLabel("Stop reply")
             } else {
                 Button {
                     send(input)
@@ -186,6 +187,7 @@ struct CoachChatView: View {
                 }
                 .buttonStyle(PressableStyle())
                 .disabled(!canSend)
+                .accessibilityLabel("Send")
             }
         }
         .padding(.horizontal, 12)

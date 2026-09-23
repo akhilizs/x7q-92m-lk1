@@ -154,6 +154,7 @@ private struct BodyWeightCard: View {
                         .background(Circle().fill(Theme.accentGradient))
                 }
                 .buttonStyle(PressableStyle())
+                .accessibilityLabel("Log body weight")
             }
             if entries.count >= 2 {
                 let values = entries.map { WeightUnit.display($0.weightKg, metric: metric) }

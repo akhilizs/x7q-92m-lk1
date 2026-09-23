@@ -102,6 +102,7 @@ struct ActiveWorkoutView: View {
                         .background(Circle().fill(Theme.surfaceRaised))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Minimize workout")
 
                 VStack(spacing: 2) {
                     Text(session?.name ?? "Workout")
@@ -287,6 +288,7 @@ struct ExerciseLogCard: View {
                     .frame(width: 36, height: 36)
                     .background(Circle().fill(Theme.surfaceRaised))
             }
+            .accessibilityLabel("Exercise options")
         }
     }
 
@@ -415,6 +417,7 @@ struct SetRow: View {
                     )
             }
             .buttonStyle(PressableStyle())
+            .accessibilityLabel(set.completed ? "Set \(number) completed" : "Complete set \(number)")
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 4)

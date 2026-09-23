@@ -44,6 +44,20 @@ targets:
         ENABLE_PREVIEWS: YES
         CODE_SIGN_STYLE: Automatic
 
+  ForgeFitUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: ForgeFitUITests
+    dependencies:
+      - target: ForgeFit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.forgefit.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: ForgeFit
+        TARGETED_DEVICE_FAMILY: "1"
+
 schemes:
   ForgeFit:
     build:
@@ -51,5 +65,9 @@ schemes:
         ForgeFit: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - ForgeFitUITests
     archive:
       config: Release
