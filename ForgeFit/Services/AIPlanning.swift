@@ -8,7 +8,7 @@ enum AIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .missingAPIKey: return "Add your Anthropic API key in Profile → AI Coach to use AI features."
+        case .missingAPIKey: return "Add your Gemini API key in Profile → AI Coach to use AI features."
         case .refused: return "The coach couldn't help with that request. Try rephrasing it."
         case .truncated: return "The response was cut off before it finished. Please try again."
         case .invalidPlan(let reason): return "The AI returned a plan the app couldn't use (\(reason)). Please try again."
@@ -149,7 +149,7 @@ enum PlanSchema {
     }
 }
 
-/// Designs complete workout plans with Claude.
+/// Designs complete workout plans with Gemini.
 @MainActor
 enum AIPlanDesigner {
     static let systemPrompt = """
@@ -182,10 +182,10 @@ enum AIPlanDesigner {
         var notes: String
     }
 
-    static func design(_ request: Request, profile: UserProfile, model: ClaudeModel,
+    static func design(_ request: Request, profile: UserProfile, model: AIModel,
                        onProgress: (String) -> Void) async throws -> WorkoutPlan {
         guard let key = KeychainStore.apiKey else { throw AIError.missingAPIKey }
-        let client = ClaudeClient(apiKey: key, model: model)
+        let client = GeminiClient(apiKey: key, model: model)
 
         let catalog = ExerciseLibrary.available(with: request.equipment.union([.bodyweight]))
         let ids = catalog.map(\.id)
@@ -209,21 +209,21 @@ enum AIPlanDesigner {
         message += "\n\nEXERCISE CATALOG (id | name | primary muscle | equipment | tracking | type)\n"
         message += ExerciseLibrary.promptCatalog(catalog)
 
-        var outputConfig: [String: Any] = [
-            "format": ["type": "json_schema", "schema": PlanSchema.plan(ids: ids, includeChangeSummary: false)] as [String: Any],
+        let generationConfig: [String: Any] = [
+            "responseMimeType": "application/json",
+            "responseJsonSchema": PlanSchema.plan(ids: ids, includeChangeSummary: false),
+            "thinkingConfig": ["thinkingLevel": "medium"] as [String: Any],
+            "maxOutputTokens": 32768,
         ]
-        if model.supportsEffort { outputConfig["effort"] = "high" }
-
-        let params: [String: Any] = [
-            "max_tokens": model.maxOutputTokens,
-            "system": systemPrompt,
-            "messages": [["role": "user", "content": message] as [String: Any]],
-            "output_config": outputConfig,
+        let body: [String: Any] = [
+            "systemInstruction": ["parts": [["text": systemPrompt]]] as [String: Any],
+            "contents": [["role": "user", "parts": [["text": message]]] as [String: Any]],
+            "generationConfig": generationConfig,
         ]
 
         onProgress("Analyzing your goals…")
         var json = ""
-        let response = try await client.stream(params) { event in
+        let response = try await client.stream(body) { event in
             switch event {
             case .thinking:
                 if json.isEmpty { onProgress("Thinking through your program…") }
@@ -236,16 +236,13 @@ enum AIPlanDesigner {
                 } else {
                     onProgress("Structuring your week…")
                 }
-            default:
+            case .toolStarted:
                 break
             }
         }
 
-        switch response.stopReason {
-        case "refusal": throw AIError.refused
-        case "max_tokens": throw AIError.truncated
-        default: break
-        }
+        if response.wasBlocked { throw AIError.refused }
+        if response.finishReason == "MAX_TOKENS" { throw AIError.truncated }
         onProgress("Finalizing…")
         return try PlanSchema.parse(Data(response.text.utf8), goal: request.goal).plan
     }

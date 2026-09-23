@@ -15,7 +15,7 @@ final class AppStore {
     var activeSession: WorkoutSession? { didSet { scheduleSave() } }
     var chatMessages: [ChatMessage] { didSet { scheduleSave() } }
     var chatHistory: [APITurn] { didSet { scheduleSave() } }
-    var aiModel: ClaudeModel { didSet { scheduleSave() } }
+    var aiModel: AIModel { didSet { scheduleSave() } }
 
     /// UI state (not persisted)
     var isWorkoutPresented = false
@@ -34,7 +34,8 @@ final class AppStore {
         var activeSession: WorkoutSession?
         var chatMessages: [ChatMessage]
         var chatHistory: [APITurn]
-        var aiModel: ClaudeModel
+        /// Stored as a raw string so unknown/older model IDs don't break loading.
+        var aiModel: String?
     }
 
     init() {
@@ -57,8 +58,10 @@ final class AppStore {
         bodyWeights = snapshot?.bodyWeights ?? []
         activeSession = snapshot?.activeSession
         chatMessages = snapshot?.chatMessages ?? []
-        chatHistory = snapshot?.chatHistory ?? []
-        aiModel = snapshot?.aiModel ?? .opus5
+        // History from the earlier Claude-based coach can't be replayed to Gemini.
+        let savedHistory = snapshot?.chatHistory ?? []
+        chatHistory = savedHistory.contains { $0.role == "assistant" } ? [] : savedHistory
+        aiModel = snapshot?.aiModel.flatMap(AIModel.init(rawValue:)) ?? .flash
 
         if arguments.contains("-uiTestDemoHistory") {
             DemoData.seed(self)
@@ -92,7 +95,7 @@ final class AppStore {
         let snapshot = Snapshot(hasOnboarded: hasOnboarded, profile: profile, plans: plans,
                                 activePlanID: activePlanID, sessions: sessions, bodyWeights: bodyWeights,
                                 activeSession: activeSession, chatMessages: chatMessages,
-                                chatHistory: chatHistory, aiModel: aiModel)
+                                chatHistory: chatHistory, aiModel: aiModel.rawValue)
         do {
             let data = try Self.encoder.encode(snapshot)
             try data.write(to: fileURL, options: [.atomic])

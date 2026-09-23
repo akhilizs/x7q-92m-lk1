@@ -45,7 +45,7 @@ struct ProfileView: View {
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                         NavigationLink { AISettingsView() } label: {
-                            ActivityRow(symbol: "sparkles", title: "Claude connection",
+                            ActivityRow(symbol: "sparkles", title: "Gemini connection",
                                         subtitle: store.hasAPIKey ? "Connected · \(store.aiModel.displayName)" : "Not connected — add your API key")
                         }
                         .buttonStyle(PressableStyle())
@@ -86,7 +86,7 @@ struct ProfileView: View {
                             .frame(height: 50)
                             .background(Capsule().strokeBorder(Theme.danger.opacity(0.4)))
                     }
-                    Text("ForgeFit \(appVersion) · Your data stays on this device. AI requests go directly from your phone to Anthropic.")
+                    Text("ForgeFit \(appVersion) · Your data stays on this device. AI requests go directly from your phone to Google's Gemini API.")
                         .font(.caption)
                         .foregroundStyle(Theme.textTertiary)
                         .frame(maxWidth: .infinity)
@@ -384,7 +384,7 @@ private struct EditNotesView: View {
     }
 }
 
-/// API key + model selection for the Claude-powered coach.
+/// API key + model selection for the Gemini-powered coach.
 struct AISettingsView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -399,8 +399,8 @@ struct AISettingsView: View {
                 HStack(spacing: 14) {
                     CoachOrb(size: 48)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Powered by Claude").font(.headline)
-                        Text(store.hasAPIKey ? "Connected — your coach is ready." : "Add an Anthropic API key to enable AI plans and coach chat.")
+                        Text("Powered by Google Gemini").font(.headline)
+                        Text(store.hasAPIKey ? "Connected — your coach is ready." : "Add a Gemini API key to enable AI plans and coach chat.")
                             .font(.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -410,7 +410,7 @@ struct AISettingsView: View {
             .listRowBackground(Theme.surface)
 
             Section {
-                SecureField(store.hasAPIKey ? "••••••••  (saved)" : "sk-ant-…", text: $keyInput)
+                SecureField(store.hasAPIKey ? "••••••••  (saved)" : "AIza…", text: $keyInput)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .font(.system(.body, design: .monospaced))
@@ -433,15 +433,15 @@ struct AISettingsView: View {
                     }
                 }
             } header: {
-                Text("Anthropic API key")
+                Text("Gemini API key")
             } footer: {
-                Text("Create a key at console.anthropic.com. It's stored in the iOS Keychain on this device and only sent to api.anthropic.com. API usage is billed to your Anthropic account.")
+                Text("Create a free key in Google AI Studio (aistudio.google.com → Get API key). It's stored in the iOS Keychain on this device and only sent to Google's Gemini API. Usage beyond the free tier is billed to your Google account.")
             }
             .listRowBackground(Theme.surface)
 
             Section {
                 Picker("Model", selection: $store.aiModel) {
-                    ForEach(ClaudeModel.allCases) { model in
+                    ForEach(AIModel.allCases) { model in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(model.displayName)
                             Text(model.blurb).font(.caption).foregroundStyle(Theme.textSecondary)

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Generate a plan from a goal and the equipment/machines available —
-/// with the AI coach (Claude) or the instant offline generator.
+/// with the AI coach (Gemini) or the instant offline generator.
 struct GeneratePlanView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -135,9 +135,9 @@ struct GeneratePlanView: View {
             Group {
                 if mode == .ai {
                     if store.hasAPIKey {
-                        Text("Claude designs a program around your goal, equipment and notes — usually in under a minute.")
+                        Text("Gemini designs a program around your goal, equipment and notes — usually in under a minute.")
                     } else {
-                        Text("Add your Anthropic API key in Profile → AI Coach to enable AI plans. Instant mode works offline.")
+                        Text("Add your Gemini API key in Profile → AI Coach to enable AI plans. Instant mode works offline.")
                             .foregroundStyle(Theme.orange)
                     }
                 } else {
@@ -161,34 +161,34 @@ struct GeneratePlanView: View {
     // MARK: Preview
 
     private func preview(_ plan: WorkoutPlan) -> some View {
-        VStack(spacing: 0) {
-            PlanContentView(plan: plan)
-            VStack(spacing: 10) {
-                Button {
-                    store.addPlan(plan, makeActive: true)
-                    Haptics.success()
-                    dismiss()
-                } label: {
-                    Label("Save & make active", systemImage: "checkmark.circle.fill")
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                HStack(spacing: 10) {
-                    Button("Adjust options") {
-                        result = nil
+        PlanContentView(plan: plan)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 10) {
+                    Button {
+                        store.addPlan(plan, makeActive: true)
+                        Haptics.success()
+                        dismiss()
+                    } label: {
+                        Label("Save & make active", systemImage: "checkmark.circle.fill")
                     }
-                    .buttonStyle(SecondaryButtonStyle())
-                    Button("Regenerate") {
-                        result = nil
-                        generate()
+                    .buttonStyle(PrimaryButtonStyle())
+                    HStack(spacing: 10) {
+                        Button("Adjust options") {
+                            result = nil
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        Button("Regenerate") {
+                            result = nil
+                            generate()
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
                     }
-                    .buttonStyle(SecondaryButtonStyle())
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 36)
+                .padding(.bottom, 8)
+                .background(BottomBlurBackground())
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
-            .background(Theme.background.opacity(0.95))
-        }
     }
 
     // MARK: Actions

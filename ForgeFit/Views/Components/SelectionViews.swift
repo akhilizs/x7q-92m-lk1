@@ -101,11 +101,14 @@ struct DaysPerWeekPicker: View {
                     Haptics.tap()
                 } label: {
                     Text("\(value)")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 20, weight: selected ? .medium : .light))
+                        .frame(width: 50, height: 50)
+                        .foregroundStyle(selected ? Color.white : Theme.textTertiary)
+                        .background(
+                            Circle().fill(Color(white: selected ? 0.15 : 0.06))
+                                .overlay(Circle().strokeBorder(Color.white.opacity(selected ? 0.6 : 0.08), lineWidth: 1))
+                        )
                         .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .foregroundStyle(selected ? Color.black : Color.white)
-                        .background(Circle().fill(selected ? Color.white : Theme.surfaceRaised))
                 }
                 .buttonStyle(PressableStyle())
             }
@@ -127,17 +130,14 @@ struct SessionLengthPicker: View {
                 } label: {
                     VStack(spacing: 1) {
                         Text("\(value)")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 17, weight: selected ? .medium : .light))
                         Text("min").font(.caption2)
-                            .foregroundStyle(selected ? Theme.inkSecondary : Theme.textSecondary)
+                            .foregroundStyle(Theme.textTertiary)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .foregroundStyle(selected ? Color.black : Color.white)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(selected ? Color.white : Theme.surfaceRaised)
-                    )
+                    .foregroundStyle(selected ? Color.white : Theme.textTertiary)
+                    .background(SelectableTileBackground(isSelected: selected, radius: 18))
                 }
                 .buttonStyle(PressableStyle())
             }
@@ -214,27 +214,47 @@ private struct EquipmentTile: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: item.symbol)
-                .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(isSelected ? Color.white : Theme.textSecondary)
+                .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? Color.white : Theme.textTertiary)
                 .frame(width: 40, height: 40)
-                .background(Circle().fill(isSelected ? Theme.ink : Color.white.opacity(0.06)))
+                .background(Circle().fill(Color.white.opacity(isSelected ? 0.14 : 0.04)))
             Text(item.displayName)
-                .font(.caption.weight(.medium))
+                .font(.caption.weight(isSelected ? .medium : .regular))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
-                .foregroundStyle(isSelected ? Theme.ink : Theme.textSecondary)
+                .foregroundStyle(isSelected ? Color.white : Theme.textTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(isSelected ? Color.white : Theme.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(isSelected ? Color.clear : Theme.stroke, lineWidth: 1)
-        )
+        .background(SelectableTileBackground(isSelected: isSelected, radius: 20))
+        .overlay(alignment: .topTrailing) {
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(width: 16, height: 16)
+                    .background(Circle().fill(.white))
+                    .padding(8)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
         .animation(.easeOut(duration: 0.15), value: isSelected)
+    }
+}
+
+/// Dark gradient tile with a bright outline when selected (no solid white fills).
+struct SelectableTileBackground: View {
+    let isSelected: Bool
+    var radius: CGFloat = 20
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(LinearGradient(colors: [Color(white: isSelected ? 0.15 : 0.075), Color(white: 0.045)],
+                                 startPoint: .top, endPoint: .bottom))
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .strokeBorder(Color.white.opacity(isSelected ? 0.55 : 0.08), lineWidth: 1)
+            )
     }
 }
 

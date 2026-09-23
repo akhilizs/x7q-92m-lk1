@@ -1,10 +1,10 @@
 import Foundation
 import Security
 
-/// Stores the user's Anthropic API key in the iOS Keychain (never in the app bundle).
+/// Stores the user's Gemini API key in the iOS Keychain (never in the app bundle).
 enum KeychainStore {
     private static let service = "com.forgefit.app"
-    private static let account = "anthropic-api-key"
+    private static let account = "gemini-api-key"
 
     static var apiKey: String? {
         get {

@@ -95,11 +95,11 @@ struct Chip: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
-        .foregroundStyle(isSelected ? Color.black : Color.white)
+        .foregroundStyle(isSelected ? Color.white : Theme.textSecondary)
         .background(
-            Capsule().fill(isSelected ? tint : Theme.surfaceRaised)
+            Capsule().fill(Color(white: isSelected ? 0.16 : 0.08))
         )
-        .overlay(Capsule().strokeBorder(isSelected ? Color.clear : Theme.stroke, lineWidth: 1))
+        .overlay(Capsule().strokeBorder(Color.white.opacity(isSelected ? 0.6 : 0.08), lineWidth: 1))
         .animation(.easeOut(duration: 0.15), value: isSelected)
     }
 }
@@ -446,5 +446,26 @@ struct FlowLayout: Layout {
             x += size.width + spacing
             rowHeight = max(rowHeight, size.height)
         }
+    }
+}
+
+/// Frosted, fading backdrop for buttons and bars that float over scrolling content,
+/// so content blurs out underneath instead of being cut off by a hard black edge.
+struct BottomBlurBackground: View {
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.ultraThinMaterial)
+            LinearGradient(colors: [Color.black.opacity(0), Color.black.opacity(0.5)],
+                           startPoint: .top, endPoint: .bottom)
+        }
+        .mask(
+            LinearGradient(stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .black, location: 0.45),
+                .init(color: .black, location: 1),
+            ], startPoint: .top, endPoint: .bottom)
+        )
+        .ignoresSafeArea(edges: .bottom)
+        .allowsHitTesting(false)
     }
 }
