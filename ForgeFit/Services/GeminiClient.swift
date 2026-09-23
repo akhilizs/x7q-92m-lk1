@@ -348,6 +348,15 @@ final class GeminiClient {
         return GeminiResponse(parts: parts, finishReason: finishReason, blockReason: blockReason)
     }
 
+    /// True when the failure could be caused by the request itself (for example a tool or
+    /// schema a model can't handle) rather than by the key, region or quota.
+    nonisolated static func mayBeRequestProblem(_ error: Error) -> Bool {
+        let failures = (error as? GeminiUnavailableError)?.failures ?? [error as? GeminiAPIError].compactMap { $0 }
+        return failures.contains { failure in
+            [400, 500, 503, 504].contains(failure.status ?? 0) && !failure.isKeyProblem && !failure.isRegionProblem
+        }
+    }
+
     /// Sends a tiny request to check that a model answers with this key.
     static func check(model: AIModel, apiKey: String) async -> Result<TimeInterval, GeminiAPIError> {
         let client = GeminiClient(apiKey: apiKey, model: model, allowsFallback: false)

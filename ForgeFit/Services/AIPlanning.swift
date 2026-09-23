@@ -253,10 +253,9 @@ enum AIPlanDesigner {
         let response: GeminiResponse
         do {
             response = try await client.stream(body(strict: true), onEvent: handle)
-        } catch let error where rejectedSchema(error) {
+        } catch let error where GeminiClient.mayBeRequestProblem(error) && json.isEmpty {
             // Some models reject the strict exercise_id enum; the app validates IDs itself anyway.
             onProgress("Retrying with a simpler request…")
-            json = ""
             response = try await client.stream(body(strict: false), onEvent: handle)
         }
 
@@ -264,18 +263,5 @@ enum AIPlanDesigner {
         if response.finishReason == "MAX_TOKENS" { throw AIError.truncated }
         onProgress("Finalizing…")
         return try PlanSchema.parse(Data(response.text.utf8), goal: request.goal).plan
-    }
-
-    /// A 400 or 500 usually means the request itself (the strict schema) was the problem.
-    private static func rejectedSchema(_ error: Error) -> Bool {
-        let failures: [GeminiAPIError]
-        if let error = error as? GeminiAPIError {
-            failures = [error]
-        } else if let error = error as? GeminiUnavailableError {
-            failures = error.failures
-        } else {
-            return false
-        }
-        return failures.contains { ($0.status == 400 || $0.status == 500) && !$0.isKeyProblem && !$0.isRegionProblem }
     }
 }

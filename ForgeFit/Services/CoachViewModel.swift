@@ -14,6 +14,8 @@ final class CoachViewModel {
     var answeredBy: AIModel?
 
     @ObservationIgnored private var task: Task<Void, Never>?
+    /// Set when requests with the plan-update function kept failing but plain chat worked.
+    @ObservationIgnored private var planUpdatesPausedUntil = Date.distantPast
 
     static let suggestions: [String] = [
         "My knees hurt when I squat",
@@ -68,11 +70,25 @@ final class CoachViewModel {
         status = "Thinking…"
         Haptics.tap()
 
-        let client = GeminiClient(apiKey: key, model: store.aiModel)
+        let model = store.aiModel
         task = Task { [weak self] in
             guard let self else { return }
             do {
-                let result = try await self.run(turns: turns, client: client, store: store)
+                var client = GeminiClient(apiKey: key, model: model)
+                let result: RunResult
+                if Date() < self.planUpdatesPausedUntil {
+                    result = try await self.run(turns: Self.textOnly(turns), client: client, store: store, planUpdates: false)
+                } else {
+                    do {
+                        result = try await self.run(turns: turns, client: client, store: store, planUpdates: true)
+                    } catch let error where GeminiClient.mayBeRequestProblem(error) && self.liveText.isEmpty {
+                        // Every model rejected the request with the plan-update function attached.
+                        // Answer as a plain chat instead of failing.
+                        client = GeminiClient(apiKey: key, model: model)
+                        result = try await self.run(turns: Self.textOnly(turns), client: client, store: store, planUpdates: false)
+                        self.planUpdatesPausedUntil = Date().addingTimeInterval(600)
+                    }
+                }
                 self.answeredBy = client.model
                 store.chatHistory = result.turns
                 let reply = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -119,6 +135,18 @@ final class CoachViewModel {
         return Array(turns[start...])
     }
 
+    /// The conversation without function calls, function results or thought signatures,
+    /// for a request that has no tools attached.
+    private static func textOnly(_ turns: [APITurn]) -> [APITurn] {
+        turns.compactMap { turn in
+            let parts: [[String: Any]] = turn.content.compactMap { part in
+                guard part["thought"] as? Bool != true, let text = part["text"] as? String, !text.isEmpty else { return nil }
+                return ["text": text]
+            }
+            return parts.isEmpty ? nil : APITurn(role: turn.role, content: parts)
+        }
+    }
+
     // MARK: - Conversation loop
 
     private struct RunResult {
@@ -127,7 +155,8 @@ final class CoachViewModel {
         var proposal: PlanProposal?
     }
 
-    private func run(turns initialTurns: [APITurn], client: GeminiClient, store: AppStore) async throws -> RunResult {
+    private func run(turns initialTurns: [APITurn], client: GeminiClient, store: AppStore,
+                     planUpdates: Bool) async throws -> RunResult {
         var turns = initialTurns
         var text = ""
         var proposal: PlanProposal?
@@ -143,27 +172,35 @@ final class CoachViewModel {
             every day and every exercise, not just the parts that changed.
             """,
             // Kept simple (no exercise_id enum): the app validates IDs against the catalog itself.
-            "parametersJsonSchema": PlanSchema.plan(ids: nil, includeChangeSummary: true),
+            "parameters": PlanSchema.plan(ids: nil, includeChangeSummary: true),
         ]
 
         let staticSystem = Self.staticInstructions
             + "\n\nEXERCISE CATALOG (id | name | primary muscle | equipment | tracking | type)\n"
             + ExerciseLibrary.promptCatalog(catalog)
-        let systemInstruction: [String: Any] = [
-            "parts": [["text": staticSystem], ["text": store.coachContext()]],
-        ]
+        var systemParts: [[String: Any]] = [["text": staticSystem], ["text": store.coachContext()]]
+        if !planUpdates {
+            systemParts.append(["text": """
+            The update_workout_plan tool is unavailable for this reply. Don't claim to have changed the plan. \
+            If a change would help, describe it briefly and tell the athlete they can edit their plan in the Plans tab.
+            """])
+        }
+        let systemInstruction: [String: Any] = ["parts": systemParts]
 
         for _ in 0..<4 {
-            let body: [String: Any] = [
+            var body: [String: Any] = [
                 "systemInstruction": systemInstruction,
                 "contents": turns.map(\.asGeminiContent),
-                "tools": [["functionDeclarations": [tool]] as [String: Any]],
-                "toolConfig": ["functionCallingConfig": ["mode": "AUTO"]] as [String: Any],
-                "generationConfig": [
+                "generationConfig": ["thinkingConfig": ["thinkingLevel": "low"] as [String: Any]] as [String: Any],
+            ]
+            if planUpdates {
+                body["tools"] = [["functionDeclarations": [tool]] as [String: Any]]
+                body["toolConfig"] = ["functionCallingConfig": ["mode": "AUTO"]] as [String: Any]
+                body["generationConfig"] = [
                     "thinkingConfig": ["thinkingLevel": "low"] as [String: Any],
                     "maxOutputTokens": 32768,
-                ] as [String: Any],
-            ]
+                ] as [String: Any]
+            }
 
             let response = try await client.stream(body) { event in
                 self.handle(event)
