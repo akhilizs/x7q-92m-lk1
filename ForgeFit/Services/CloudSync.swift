@@ -327,6 +327,10 @@ final class CloudSync {
     private func handle(_ error: Error) {
         if error is CancellationError || (error as? URLError)?.code == .cancelled {
             status = .idle
+        } else if let error = error as? SupabaseError, error.isAccountGone {
+            // Deleted on the server: stop syncing, keep everything on this iPhone.
+            forgetAccount()
+            notice = error.localizedDescription
         } else if session == nil {
             status = .idle
         } else {

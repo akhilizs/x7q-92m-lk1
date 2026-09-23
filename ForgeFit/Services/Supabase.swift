@@ -43,6 +43,10 @@ struct SupabaseError: LocalizedError {
     /// The access token was rejected; refreshing it may help.
     var isUnauthorized: Bool { status == 401 || code == "PGRST301" || code == "PGRST303" || code == "bad_jwt" }
 
+    /// The account was deleted (for example from the Supabase dashboard) while this
+    /// device was still logged in: its data row can't reference the user any more.
+    var isAccountGone: Bool { code == "23503" || code == "user_not_found" }
+
     var errorDescription: String? {
         switch code {
         case "invalid_credentials":
@@ -65,6 +69,8 @@ struct SupabaseError: LocalizedError {
             return "Your session expired. Log in again to keep saving your progress."
         case "PGRST205", "PGRST202", "42P01", "42883":
             return "Cloud save isn't set up yet. Run supabase/setup.sql in your Supabase project (see README)."
+        case "23503", "user_not_found":
+            return "This account no longer exists. Your progress is still on this iPhone: log in or create a new account to keep saving it."
         case "42501":
             return "The database refused to save your progress. Run supabase/setup.sql again in your Supabase project."
         default:
