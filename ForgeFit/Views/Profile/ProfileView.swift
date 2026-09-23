@@ -52,6 +52,7 @@ struct ProfileView: View {
                     Toggle(isOn: $store.profile.useMetric) {
                         row("Metric units (kg)", value: nil, symbol: "ruler.fill", tint: Theme.accentAlt)
                     }
+                    .tint(Theme.sky)
                     HStack {
                         row("Name", value: nil, symbol: "person.fill", tint: Theme.accent)
                         TextField("Your name", text: $store.profile.name)
@@ -98,12 +99,12 @@ struct ProfileView: View {
             ZStack {
                 Circle().fill(Theme.tint(for: store.profile.goal)).frame(width: 68, height: 68)
                 Text(initials)
-                    .font(.system(.title2, design: .rounded).weight(.heavy))
-                    .foregroundStyle(.white)
+                    .font(.system(.title2).weight(.semibold))
+                    .foregroundStyle(Theme.ink)
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text(store.profile.name.isEmpty ? "Athlete" : store.profile.name)
-                    .font(.system(.title2, design: .rounded).weight(.bold))
+                    .font(.system(.title2).weight(.semibold))
                 HStack(spacing: 6) {
                     TagLabel(text: store.profile.goal.title, symbol: store.profile.goal.symbol, color: Theme.accent)
                     TagLabel(text: store.profile.level.title, color: Theme.accentAlt)
@@ -123,7 +124,7 @@ struct ProfileView: View {
     private func row(_ title: String, value: String?, symbol: String, tint: Color) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
-                .font(.subheadline.weight(.bold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(tint)
                 .frame(width: 30, height: 30)
                 .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(tint.opacity(0.15)))
@@ -158,6 +159,7 @@ private struct EditGoalView: View {
         }
         .appBackground()
         .navigationTitle("Goal & Level")
+        .resumeWorkoutBar()
     }
 }
 
@@ -181,6 +183,7 @@ private struct EditScheduleView: View {
         }
         .appBackground()
         .navigationTitle("Schedule")
+        .resumeWorkoutBar()
     }
 }
 
@@ -200,6 +203,7 @@ private struct EditEquipmentView: View {
         }
         .appBackground()
         .navigationTitle("Equipment")
+        .resumeWorkoutBar()
     }
 }
 
@@ -224,6 +228,7 @@ private struct EditNotesView: View {
         .scrollDismissesKeyboard(.interactively)
         .appBackground()
         .navigationTitle("Injuries & Preferences")
+        .resumeWorkoutBar()
     }
 }
 
@@ -303,6 +308,7 @@ struct AISettingsView: View {
         .appBackground()
         .navigationTitle("AI Coach")
         .navigationBarTitleDisplayMode(.inline)
+        .resumeWorkoutBar()
         .toolbar {
             if showsDoneButton {
                 ToolbarItem(placement: .topBarTrailing) {

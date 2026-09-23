@@ -11,10 +11,26 @@ struct GradientIcon: View {
             RoundedRectangle(cornerRadius: size * 0.32, style: .continuous)
                 .fill(gradient)
             Image(systemName: symbol)
-                .font(.system(size: size * 0.42, weight: .bold))
+                .font(.system(size: size * 0.42, weight: .semibold))
                 .foregroundStyle(foreground)
         }
         .frame(width: size, height: size)
+    }
+}
+
+/// Round icon on a soft circular background.
+struct IconBadge: View {
+    let symbol: String
+    var background: Color = Theme.surfaceHigh
+    var foreground: Color = .white
+    var size: CGFloat = 40
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.42, weight: .semibold))
+            .foregroundStyle(foreground)
+            .frame(width: size, height: size)
+            .background(Circle().fill(background))
     }
 }
 
@@ -26,12 +42,12 @@ struct SectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(.system(.title3, design: .rounded).weight(.bold))
+                .font(.system(size: 20, weight: .semibold))
             Spacer()
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
     }
@@ -46,21 +62,21 @@ struct StatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Image(systemName: symbol)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(tint)
-                .frame(width: 30, height: 30)
-                .background(Circle().fill(tint.opacity(0.15)))
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(Theme.surfaceHigh))
             Text(value)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .font(.system(size: 22, weight: .semibold).monospacedDigit())
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(label)
-                .font(.caption.weight(.medium))
+                .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardStyle(padding: 14, radius: 20)
+        .cardStyle(padding: 14, radius: 22)
     }
 }
 
@@ -73,21 +89,22 @@ struct Chip: View {
     var body: some View {
         HStack(spacing: 6) {
             if let symbol {
-                Image(systemName: symbol).font(.caption.weight(.bold))
+                Image(systemName: symbol).font(.caption.weight(.semibold))
             }
-            Text(title).font(.subheadline.weight(.semibold))
+            Text(title).font(.subheadline.weight(.medium))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
         .foregroundStyle(isSelected ? Color.black : Color.white)
         .background(
-            Capsule().fill(isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(Theme.surfaceRaised))
+            Capsule().fill(isSelected ? tint : Theme.surfaceRaised)
         )
         .overlay(Capsule().strokeBorder(isSelected ? Color.clear : Theme.stroke, lineWidth: 1))
         .animation(.easeOut(duration: 0.15), value: isSelected)
     }
 }
 
+/// Graphite capsule tag for dark surfaces.
 struct TagLabel: View {
     let text: String
     var symbol: String? = nil
@@ -98,11 +115,61 @@ struct TagLabel: View {
             if let symbol { Image(systemName: symbol) }
             Text(text)
         }
-        .font(.caption.weight(.semibold))
+        .font(.caption.weight(.medium))
         .foregroundStyle(color)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Capsule().fill(color.opacity(0.14)))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(Theme.surfaceHigh))
+    }
+}
+
+/// Black capsule tag for light (pastel) cards — "Yoga", "Bodybuilding".
+struct InkTag: View {
+    let text: String
+    var symbol: String? = nil
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let symbol { Image(systemName: symbol) }
+            Text(text)
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Theme.ink))
+    }
+}
+
+/// Small metadata item with an icon on pastel cards.
+struct InkMeta: View {
+    let symbol: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 16, height: 16)
+                .background(Circle().fill(Theme.ink))
+            Text(text)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(Theme.inkSecondary)
+        }
+    }
+}
+
+/// Oversized SF Symbol used as an illustration on pastel cards.
+struct FigureArt: View {
+    let symbol: String
+    var size: CGFloat = 96
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size, weight: .regular))
+            .foregroundStyle(Theme.ink.opacity(0.88))
+            .accessibilityHidden(true)
     }
 }
 
@@ -114,15 +181,15 @@ struct AIBadge: View {
             Image(systemName: "sparkles")
             Text(text)
         }
-        .font(.caption2.weight(.heavy))
-        .foregroundStyle(.white)
+        .font(.caption2.weight(.bold))
+        .foregroundStyle(.black)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Capsule().fill(Theme.aiGradient))
     }
 }
 
-/// Animated glowing orb used to represent the AI coach.
+/// Brushed-chrome orb that represents the AI coach.
 struct CoachOrb: View {
     var size: CGFloat = 64
     var animating: Bool = false
@@ -131,25 +198,25 @@ struct CoachOrb: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Theme.aiGradient)
-                .blur(radius: size * 0.25)
-                .opacity(0.8)
-                .scaleEffect(phase ? 1.15 : 0.9)
+                .fill(Color.white.opacity(0.35))
+                .blur(radius: size * 0.22)
+                .scaleEffect(phase ? 1.1 : 0.85)
+                .opacity(animating ? 0.9 : 0.35)
             Circle()
                 .fill(Theme.aiGradient)
                 .overlay(
-                    Circle()
-                        .fill(RadialGradient(colors: [.white.opacity(0.55), .clear],
-                                             center: .topLeading, startRadius: 1, endRadius: size * 0.7))
+                    Circle().fill(RadialGradient(colors: [.white.opacity(0.9), .clear],
+                                                 center: .topLeading, startRadius: 1, endRadius: size * 0.6))
                 )
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.5), lineWidth: 1))
             Image(systemName: "sparkles")
-                .font(.system(size: size * 0.38, weight: .bold))
-                .foregroundStyle(.white)
-                .rotationEffect(.degrees(phase && animating ? 12 : 0))
+                .font(.system(size: size * 0.36, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+                .rotationEffect(.degrees(phase && animating ? 10 : 0))
         }
         .frame(width: size, height: size)
         .onAppear {
-            withAnimation(.easeInOut(duration: animating ? 0.9 : 2.4).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: animating ? 0.9 : 2.6).repeatForever(autoreverses: true)) {
                 phase = true
             }
         }
@@ -165,9 +232,9 @@ struct EmptyStateView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            GradientIcon(symbol: symbol, size: 60)
+            IconBadge(symbol: symbol, size: 56)
             Text(title)
-                .font(.system(.title3, design: .rounded).weight(.bold))
+                .font(.system(size: 20, weight: .semibold))
             Text(message)
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
@@ -186,19 +253,80 @@ struct EmptyStateView: View {
 /// A thin rounded progress bar.
 struct ProgressBar: View {
     let value: Double
-    var gradient: LinearGradient = Theme.accentGradient
-    var height: CGFloat = 6
+    var fill: Color = .white
+    var height: CGFloat = 5
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.white.opacity(0.08))
-                Capsule().fill(gradient)
+                Capsule().fill(Color.white.opacity(0.1))
+                Capsule().fill(fill)
                     .frame(width: max(height, geo.size.width * min(max(value, 0), 1)))
             }
         }
         .frame(height: height)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: value)
+    }
+}
+
+/// Segmented dash indicator used at the top of onboarding.
+struct DashProgress: View {
+    let current: Int
+    let total: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<total, id: \.self) { index in
+                Capsule()
+                    .fill(index <= current ? Color.white : Color.white.opacity(0.18))
+                    .frame(height: 3)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: current)
+    }
+}
+
+/// Circular progress ring (e.g. weekly volume vs last week).
+struct RingView: View {
+    let progress: Double
+    var color: Color = .white
+    var lineWidth: CGFloat = 6
+    var size: CGFloat = 44
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Color.white.opacity(0.1), lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0, to: min(max(progress, 0.02), 1))
+                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: size, height: size)
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: progress)
+    }
+}
+
+/// Black & white photo with a readable gradient at the bottom.
+struct PhotoBackdrop: View {
+    let name: String
+    var alignment: Alignment = .center
+    var gradientStart: Double = 0.35
+
+    var body: some View {
+        GeometryReader { geo in
+            Image(name)
+                .resizable()
+                .scaledToFill()
+                .frame(width: geo.size.width, height: geo.size.height, alignment: alignment)
+                .clipped()
+                .overlay(
+                    LinearGradient(stops: [
+                        .init(color: .clear, location: gradientStart),
+                        .init(color: .black.opacity(0.9), location: 1),
+                    ], startPoint: .top, endPoint: .bottom)
+                )
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -257,7 +385,7 @@ struct StepperControl: View {
     var body: some View {
         HStack(spacing: 10) {
             Text(label)
-                .font(.caption.weight(.semibold))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
             Spacer(minLength: 4)
             Button {
@@ -267,9 +395,9 @@ struct StepperControl: View {
                 Image(systemName: "minus").frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
-            .background(Circle().fill(Theme.surfaceRaised))
+            .background(Circle().fill(Theme.surfaceHigh))
             Text(format(value))
-                .font(.system(.subheadline, design: .rounded).weight(.bold))
+                .font(.system(.subheadline).weight(.semibold))
                 .monospacedDigit()
                 .frame(minWidth: 44)
             Button {
@@ -279,7 +407,7 @@ struct StepperControl: View {
                 Image(systemName: "plus").frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
-            .background(Circle().fill(Theme.surfaceRaised))
+            .background(Circle().fill(Theme.surfaceHigh))
         }
     }
 }

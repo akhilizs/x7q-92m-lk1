@@ -46,6 +46,7 @@ struct CoachChatView: View {
                 inputBar
             }
             .appBackground()
+            .resumeWorkoutBar()
             .navigationTitle("Coach")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -53,7 +54,7 @@ struct CoachChatView: View {
                     HStack(spacing: 8) {
                         CoachOrb(size: 26, animating: model.isResponding)
                         VStack(alignment: .leading, spacing: 0) {
-                            Text("Coach Forge").font(.subheadline.weight(.bold))
+                            Text("Coach Forge").font(.subheadline.weight(.semibold))
                             Text(model.isResponding ? "typing…" : store.aiModel.displayName)
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textSecondary)
@@ -109,7 +110,7 @@ struct CoachChatView: View {
                 .padding(.top, 20)
             VStack(spacing: 8) {
                 Text("Hey\(store.profile.firstName.isEmpty ? "" : " \(store.profile.firstName)"), I'm your coach")
-                    .font(.system(.title2, design: .rounded).weight(.bold))
+                    .font(.system(.title2).weight(.semibold))
                     .multilineTextAlignment(.center)
                 Text("Tell me what's going on — sore joints, no time, a plateau, low motivation — and I'll adjust your plan to fit.")
                     .font(.subheadline)
@@ -125,7 +126,7 @@ struct CoachChatView: View {
                         .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
                     Button("Add API key") { showKeySheet = true }
-                        .buttonStyle(PrimaryButtonStyle(gradient: Theme.aiGradient, foreground: .white))
+                        .buttonStyle(PrimaryButtonStyle())
                 }
                 .cardStyle()
             } else {
@@ -139,7 +140,7 @@ struct CoachChatView: View {
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 10)
                                 .background(Capsule().fill(Theme.surfaceRaised))
-                                .overlay(Capsule().strokeBorder(Theme.violet.opacity(0.4)))
+                                .overlay(Capsule().strokeBorder(Color.white.opacity(0.14)))
                         }
                         .buttonStyle(PressableStyle())
                     }
@@ -179,8 +180,8 @@ struct CoachChatView: View {
                     send(input)
                 } label: {
                     Image(systemName: "arrow.up")
-                        .font(.headline.weight(.heavy))
-                        .foregroundStyle(.white)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.black)
                         .frame(width: 46, height: 46)
                         .background(Circle().fill(Theme.aiGradient))
                         .opacity(canSend ? 1 : 0.4)
@@ -319,7 +320,7 @@ private struct TypingDots: View {
         HStack(spacing: 4) {
             ForEach(0..<3, id: \.self) { i in
                 Circle()
-                    .fill(Theme.violet)
+                    .fill(Color.white)
                     .frame(width: 6, height: 6)
                     .scaleEffect(animate ? 1 : 0.5)
                     .opacity(animate ? 1 : 0.4)
@@ -338,60 +339,67 @@ private struct ProposalCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                AIBadge(text: "PLAN UPDATE")
+            HStack(spacing: 6) {
+                InkTag(text: "Plan update", symbol: "sparkles")
                 Spacer()
                 switch proposal.status {
-                case .applied: TagLabel(text: "Applied", symbol: "checkmark", color: Theme.accent)
-                case .dismissed: TagLabel(text: "Dismissed", color: Theme.textTertiary)
+                case .applied: InkTag(text: "Applied", symbol: "checkmark")
+                case .dismissed: InkTag(text: "Dismissed")
                 case .pending: EmptyView()
                 }
             }
             Text(proposal.plan.name)
-                .font(.system(.title3, design: .rounded).weight(.bold))
+                .font(.system(size: 22, weight: .medium))
+                .italic()
             if !proposal.changeSummary.isEmpty {
                 Text(proposal.changeSummary)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkSecondary)
             }
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(proposal.plan.days) { day in
                     HStack {
-                        Text(day.name).font(.caption.weight(.bold))
+                        Text(day.name).font(.caption.weight(.semibold))
                         Spacer()
                         Text("\(day.exercises.count) exercises · ~\(day.estimatedMinutes) min")
                             .font(.caption)
-                            .foregroundStyle(Theme.textSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
             }
             .padding(12)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.black.opacity(0.25)))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.45)))
 
             HStack(spacing: 10) {
-                Button("Preview", action: onPreview)
-                    .buttonStyle(SecondaryButtonStyle())
+                Button(action: onPreview) {
+                    Text("Preview")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background(Capsule().fill(Color.white))
+                }
+                .buttonStyle(PressableStyle())
                 if proposal.status == .pending {
                     Button(action: onApply) {
                         Label("Apply", systemImage: "checkmark")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 46)
+                            .background(Capsule().fill(Theme.ink))
                     }
-                    .buttonStyle(PrimaryButtonStyle(gradient: Theme.aiGradient, foreground: .white))
+                    .buttonStyle(PressableStyle())
                 }
             }
             if proposal.status == .pending {
                 Button("Not now", action: onDismiss)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.textTertiary)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.inkSecondary)
                     .frame(maxWidth: .infinity)
             }
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.violet.opacity(0.22), Theme.blue.opacity(0.1)],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-        )
-        .glowBorder(Theme.aiGradient, radius: 22, width: 1)
+        .pastelCard(Theme.lilac, padding: 16, radius: 24)
     }
 }
 
@@ -408,7 +416,7 @@ struct MarkdownText: View {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 if line.isBullet {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Circle().fill(Theme.violet).frame(width: 5, height: 5).offset(y: -3)
+                        Circle().fill(Color.white.opacity(0.7)).frame(width: 5, height: 5).offset(y: -3)
                         Text(Self.attributed(line.text))
                     }
                 } else if line.text.isEmpty {

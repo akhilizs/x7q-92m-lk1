@@ -1,53 +1,102 @@
 import SwiftUI
 import UIKit
 
+/// Monochrome "dark mode done right" design system: pure black canvas,
+/// graphite cards, white primary actions and soft pastel program cards.
 enum Theme {
-    // Base palette
-    static let background = Color(red: 0.035, green: 0.035, blue: 0.055)
-    static let surface = Color(red: 0.085, green: 0.085, blue: 0.115)
-    static let surfaceRaised = Color(red: 0.12, green: 0.12, blue: 0.16)
-    static let stroke = Color.white.opacity(0.08)
+    // Canvas & surfaces
+    static let background = Color.black
+    static let surface = Color(white: 0.085)
+    static let surfaceRaised = Color(white: 0.13)
+    static let surfaceHigh = Color(white: 0.19)
+    static let stroke = Color.white.opacity(0.07)
+
+    // Text
     static let textPrimary = Color.white
-    static let textSecondary = Color.white.opacity(0.62)
-    static let textTertiary = Color.white.opacity(0.38)
+    static let textSecondary = Color.white.opacity(0.55)
+    static let textTertiary = Color.white.opacity(0.32)
 
-    // Brand
-    static let accent = Color(red: 0.78, green: 1.0, blue: 0.24)       // volt lime
-    static let accentAlt = Color(red: 0.22, green: 0.94, blue: 0.78)   // aqua
-    static let violet = Color(red: 0.58, green: 0.40, blue: 1.0)
-    static let blue = Color(red: 0.26, green: 0.56, blue: 1.0)
-    static let pink = Color(red: 1.0, green: 0.36, blue: 0.62)
-    static let orange = Color(red: 1.0, green: 0.55, blue: 0.24)
-    static let danger = Color(red: 1.0, green: 0.33, blue: 0.36)
+    /// Text and marks placed on light (pastel / white) cards.
+    static let ink = Color(red: 0.05, green: 0.05, blue: 0.06)
+    static let inkSecondary = Color.black.opacity(0.55)
 
-    static let accentGradient = LinearGradient(colors: [accent, accentAlt],
+    // Pastels used for program and highlight cards
+    static let paper = Color(red: 0.95, green: 0.95, blue: 0.94)
+    static let sky = Color(red: 0.74, green: 0.87, blue: 0.92)
+    static let rose = Color(red: 0.91, green: 0.75, blue: 0.90)
+    static let sand = Color(red: 0.94, green: 0.89, blue: 0.79)
+    static let lilac = Color(red: 0.82, green: 0.79, blue: 0.97)
+    static let sage = Color(red: 0.80, green: 0.89, blue: 0.81)
+    static let pastels: [Color] = [paper, sky, rose, sand, lilac, sage]
+
+    static func pastel(_ index: Int) -> Color {
+        pastels[((index % pastels.count) + pastels.count) % pastels.count]
+    }
+
+    // Data accents — used sparingly for rings and charts
+    static let orange = Color(red: 1.0, green: 0.62, blue: 0.22)
+    static let blue = Color(red: 0.38, green: 0.64, blue: 1.0)
+    static let danger = Color(red: 1.0, green: 0.38, blue: 0.38)
+
+    // Monochrome roles
+    static let accent = Color.white
+    static let accentAlt = Color(white: 0.78)
+    static let violet = lilac
+    static let pink = rose
+
+    static let accentGradient = LinearGradient(colors: [.white, Color(white: 0.88)],
                                                startPoint: .topLeading, endPoint: .bottomTrailing)
-    static let aiGradient = LinearGradient(colors: [violet, blue],
+    /// Brushed-chrome gradient used for AI elements.
+    static let aiGradient = LinearGradient(colors: [Color(white: 0.98), Color(white: 0.70)],
                                            startPoint: .topLeading, endPoint: .bottomTrailing)
-    static let warmGradient = LinearGradient(colors: [orange, pink],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let graphiteGradient = LinearGradient(colors: [Color(white: 0.24), Color(white: 0.12)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing)
 
-    static func tint(for goal: FitnessGoal) -> LinearGradient {
+    static func tint(for goal: FitnessGoal) -> Color {
         switch goal {
-        case .buildMuscle: return LinearGradient(colors: [violet, blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .getStronger: return LinearGradient(colors: [orange, danger], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .loseFat: return LinearGradient(colors: [pink, orange], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .endurance: return LinearGradient(colors: [accentAlt, blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .athletic: return LinearGradient(colors: [accent, accentAlt], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .generalFitness: return LinearGradient(colors: [accentAlt, accent], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .buildMuscle: return lilac
+        case .getStronger: return sand
+        case .loseFat: return rose
+        case .endurance: return sky
+        case .athletic: return sage
+        case .generalFitness: return paper
         }
     }
 
     static func color(for muscle: MuscleGroup) -> Color {
         switch muscle {
-        case .chest: return pink
-        case .back: return blue
-        case .shoulders: return violet
-        case .biceps, .triceps, .forearms: return orange
-        case .quads, .hamstrings, .glutes, .calves: return accentAlt
-        case .core: return accent
-        case .fullBody: return accent
-        case .cardio: return danger
+        case .chest: return rose
+        case .back: return sky
+        case .shoulders: return lilac
+        case .biceps, .triceps, .forearms: return sand
+        case .quads, .hamstrings, .glutes, .calves: return sage
+        case .core: return paper
+        case .fullBody: return paper
+        case .cardio: return rose
+        }
+    }
+
+    /// A large figure illustration for program/day cards.
+    static func figure(for muscle: MuscleGroup?) -> String {
+        switch muscle {
+        case .chest, .triceps: return "figure.strengthtraining.functional"
+        case .back, .biceps, .forearms: return "figure.rower"
+        case .shoulders: return "figure.boxing"
+        case .quads, .glutes, .hamstrings, .calves: return "figure.step.training"
+        case .core: return "figure.core.training"
+        case .cardio: return "figure.run"
+        default: return "figure.strengthtraining.traditional"
+        }
+    }
+
+    static func figure(for goal: FitnessGoal) -> String {
+        switch goal {
+        case .buildMuscle: return "figure.strengthtraining.traditional"
+        case .getStronger: return "figure.cross.training"
+        case .loseFat: return "figure.highintensity.intervaltraining"
+        case .endurance: return "figure.run"
+        case .athletic: return "figure.basketball"
+        case .generalFitness: return "figure.mind.and.body"
         }
     }
 }
@@ -56,30 +105,17 @@ enum Theme {
 
 struct AppBackground: View {
     var body: some View {
-        ZStack {
-            Theme.background
-            Circle()
-                .fill(Theme.violet.opacity(0.22))
-                .frame(width: 420, height: 420)
-                .blur(radius: 120)
-                .offset(x: -160, y: -340)
-            Circle()
-                .fill(Theme.accent.opacity(0.10))
-                .frame(width: 380, height: 380)
-                .blur(radius: 120)
-                .offset(x: 180, y: 260)
-        }
-        .ignoresSafeArea()
+        Theme.background.ignoresSafeArea()
     }
 }
 
 extension View {
-    /// Dark gradient app background behind scroll content.
+    /// Pure black app background behind scroll content.
     func appBackground() -> some View {
         background(AppBackground())
     }
 
-    func cardStyle(padding: CGFloat = 16, radius: CGFloat = 22) -> some View {
+    func cardStyle(padding: CGFloat = 16, radius: CGFloat = 24) -> some View {
         self
             .padding(padding)
             .background(
@@ -92,7 +128,19 @@ extension View {
             )
     }
 
-    func glowBorder(_ gradient: LinearGradient, radius: CGFloat = 24, width: CGFloat = 1.5) -> some View {
+    /// Light pastel card with ink-colored content.
+    func pastelCard(_ color: Color, padding: CGFloat = 18, radius: CGFloat = 26) -> some View {
+        self
+            .padding(padding)
+            .foregroundStyle(Theme.ink)
+            .background(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(color)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+    }
+
+    func glowBorder(_ gradient: LinearGradient, radius: CGFloat = 24, width: CGFloat = 1) -> some View {
         overlay(
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .strokeBorder(gradient, lineWidth: width)
@@ -102,32 +150,49 @@ extension View {
 
 // MARK: - Button styles
 
+/// White capsule with black text — the main call to action.
 struct PrimaryButtonStyle: ButtonStyle {
     var gradient: LinearGradient = Theme.accentGradient
     var foreground: Color = .black
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(.headline, design: .rounded).weight(.bold))
+            .font(.system(.headline).weight(.semibold))
             .foregroundStyle(foreground)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .frame(height: 56)
             .background(Capsule().fill(gradient))
-            .shadow(color: Theme.accent.opacity(configuration.isPressed ? 0.1 : 0.25), radius: 16, y: 6)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+/// Graphite capsule with white text.
+struct SecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.subheadline).weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(Capsule().fill(Theme.surfaceRaised))
+            .overlay(Capsule().strokeBorder(Theme.stroke, lineWidth: 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 
-struct SecondaryButtonStyle: ButtonStyle {
+/// Frosted capsule used on top of photos ("Let's Go →").
+struct GlassButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+            .font(.system(.headline).weight(.medium))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(Capsule().fill(Theme.surfaceRaised))
-            .overlay(Capsule().strokeBorder(Theme.stroke, lineWidth: 1))
+            .frame(height: 56)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
     }

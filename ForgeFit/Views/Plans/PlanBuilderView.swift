@@ -30,7 +30,7 @@ struct PlanBuilderView: View {
             List {
                 Section {
                     TextField("Plan name", text: $plan.name)
-                        .font(.system(.title3, design: .rounded).weight(.bold))
+                        .font(.system(.title3).weight(.semibold))
                     Picker("Goal", selection: $plan.goal) {
                         ForEach(FitnessGoal.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
                     }
@@ -39,6 +39,7 @@ struct PlanBuilderView: View {
                         .foregroundStyle(Theme.textSecondary)
                     if existing == nil {
                         Toggle("Make this my active plan", isOn: $makeActive)
+                        .tint(Theme.sky)
                     }
                 } header: {
                     Text("Plan")
@@ -77,7 +78,7 @@ struct PlanBuilderView: View {
                         Haptics.tap()
                     } label: {
                         Label("Add training day", systemImage: "calendar.badge.plus")
-                            .font(.subheadline.weight(.bold))
+                            .font(.subheadline.weight(.semibold))
                     }
                     .disabled(plan.days.count >= 7)
                 }
@@ -185,7 +186,7 @@ private struct BuilderExerciseRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(item.name).font(.subheadline.weight(.bold))
+                Text(item.name).font(.subheadline.weight(.semibold))
                 Spacer()
                 if let muscle = item.exercise?.primary {
                     TagLabel(text: muscle.displayName, color: Theme.color(for: muscle))
@@ -245,6 +246,7 @@ struct ExercisePickerView: View {
                     MuscleFilterBar(selection: $muscle)
                         .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                     Toggle("Only equipment I have", isOn: $onlyMyEquipment)
+                        .tint(Theme.sky)
                 }
                 .listRowBackground(Theme.surface)
 
@@ -318,7 +320,7 @@ private struct PickerRow: View {
                     .background(Circle().fill(order == nil ? AnyShapeStyle(Color.clear) : AnyShapeStyle(Theme.accentGradient)))
                 if let order {
                     Text("\(order)")
-                        .font(.caption.weight(.heavy))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.black)
                 }
             }

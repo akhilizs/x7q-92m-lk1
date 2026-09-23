@@ -53,7 +53,7 @@ struct FinishWorkoutSheet: View {
                     .foregroundStyle(.black)
             }
             Text(session.completedSetCount > 0 ? "Great work!" : "Nothing logged yet")
-                .font(.system(.title, design: .rounded).weight(.heavy))
+                .font(.system(.title).weight(.semibold))
             Text(session.completedSetCount > 0
                  ? "You completed \(session.completedSetCount) of \(session.totalSetCount) sets."
                  : "Tick off at least one set to save this workout.")
@@ -79,7 +79,7 @@ struct FinishWorkoutSheet: View {
                 Text("How hard was it?").font(.headline)
                 Spacer()
                 Text("\(Int(effort))/10 · \(effortLabel)")
-                    .font(.subheadline.weight(.bold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(effortColor)
             }
             Slider(value: $effort, in: 1...10, step: 1)

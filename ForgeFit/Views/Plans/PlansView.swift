@@ -8,27 +8,20 @@ struct PlansView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 24) {
                     createSection
-                    if let active = store.activePlan {
-                        VStack(alignment: .leading, spacing: 12) {
-                            SectionHeader(title: "Active plan")
-                            NavigationLink(value: active.id) {
-                                PlanCard(plan: active, isActive: true)
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionHeader(title: "Programs")
+                        if store.plans.isEmpty {
+                            Text("No plans yet — generate one or build your own.")
+                                .font(.subheadline)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        ForEach(Array(orderedPlans.enumerated()), id: \.element.id) { index, plan in
+                            NavigationLink(value: plan.id) {
+                                PlanCard(plan: plan, isActive: plan.id == store.activePlanID, color: Theme.pastel(index + 1))
                             }
                             .buttonStyle(PressableStyle())
-                        }
-                    }
-                    let others = store.plans.filter { $0.id != store.activePlanID }
-                    if !others.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            SectionHeader(title: "Saved plans")
-                            ForEach(others) { plan in
-                                NavigationLink(value: plan.id) {
-                                    PlanCard(plan: plan, isActive: false)
-                                }
-                                .buttonStyle(PressableStyle())
-                            }
                         }
                     }
                     ExerciseLibraryLink()
@@ -47,52 +40,65 @@ struct PlansView: View {
         }
     }
 
+    /// Active plan first, then the rest newest first.
+    private var orderedPlans: [WorkoutPlan] {
+        let active = store.plans.filter { $0.id == store.activePlanID }
+        return active + store.plans.filter { $0.id != store.activePlanID }
+    }
+
     private var createSection: some View {
-        VStack(spacing: 12) {
+        HStack(spacing: 12) {
             Button {
                 showGenerator = true
             } label: {
-                HStack(spacing: 14) {
-                    GradientIcon(symbol: "sparkles", gradient: Theme.aiGradient, size: 50, foreground: .white)
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Text("Generate a plan").font(.headline)
-                            if store.hasAPIKey { AIBadge() }
+                ZStack(alignment: .bottomLeading) {
+                    PhotoBackdrop(name: "WorkoutPress", alignment: .top, gradientStart: 0.1)
+                    VStack(alignment: .leading, spacing: 6) {
+                        if store.hasAPIKey {
+                            AIBadge()
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13, weight: .semibold))
+                                .frame(width: 28, height: 28)
+                                .background(.ultraThinMaterial, in: Circle())
                         }
-                        Text("Pick your goal and the machines you have — get a full program in seconds.")
+                        Spacer()
+                        Text("Generate a plan")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("From your goal and the machines you have")
                             .font(.caption)
-                            .foregroundStyle(Theme.textSecondary)
+                            .foregroundStyle(.white.opacity(0.7))
                             .multilineTextAlignment(.leading)
                     }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(.white)
+                    .padding(14)
                 }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(LinearGradient(colors: [Theme.violet.opacity(0.25), Theme.blue.opacity(0.1)],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing))
-                )
-                .glowBorder(Theme.aiGradient, radius: 22, width: 1)
+                .frame(height: 200)
+                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
             }
             .buttonStyle(PressableStyle())
 
             Button {
                 showBuilder = true
             } label: {
-                HStack(spacing: 14) {
-                    GradientIcon(symbol: "hammer.fill", gradient: Theme.warmGradient, size: 50, foreground: .white)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Build your own").font(.headline)
-                        Text("Choose every exercise, set and rep yourself.")
-                            .font(.caption)
-                            .foregroundStyle(Theme.textSecondary)
-                            .multilineTextAlignment(.leading)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").foregroundStyle(Theme.textTertiary)
+                VStack(alignment: .leading, spacing: 6) {
+                    InkTag(text: "Custom")
+                    Spacer()
+                    Text("Build your own")
+                        .font(.system(size: 18, weight: .medium))
+                        .italic()
+                    Text("Pick every exercise, set and rep")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .multilineTextAlignment(.leading)
                 }
-                .cardStyle(padding: 16, radius: 22)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .overlay(alignment: .topTrailing) {
+                    FigureArt(symbol: "hammer.fill", size: 46)
+                        .offset(x: 4, y: 26)
+                }
+                .pastelCard(Theme.paper, padding: 14)
+                .frame(height: 200)
             }
             .buttonStyle(PressableStyle())
         }
@@ -100,53 +106,39 @@ struct PlansView: View {
     }
 }
 
+/// Pastel program card ("Yoga Time", "Bodybuilding Time" style).
 struct PlanCard: View {
     let plan: WorkoutPlan
     let isActive: Bool
+    var color: Color = Theme.paper
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        TagLabel(text: plan.source.label, symbol: plan.source.symbol,
-                                 color: plan.source == .ai ? Theme.violet : Theme.accent)
-                        if isActive { TagLabel(text: "Active", symbol: "bolt.fill", color: Theme.accent) }
-                    }
-                    Text(plan.name)
-                        .font(.system(.title3, design: .rounded).weight(.bold))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.leading)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                InkTag(text: plan.goal.title)
+                if isActive {
+                    InkTag(text: "Active", symbol: "bolt.fill")
                 }
-                Spacer()
-                GradientIcon(symbol: plan.goal.symbol, gradient: Theme.tint(for: plan.goal), size: 40, foreground: .white)
             }
-            if !plan.summary.isEmpty {
-                Text(plan.summary)
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(plan.days) { day in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(day.name).font(.caption.weight(.bold)).foregroundStyle(.white)
-                            Text("\(day.exercises.count) ex").font(.caption2).foregroundStyle(Theme.textSecondary)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surfaceRaised))
-                    }
-                }
+            Text(plan.name)
+                .font(.system(size: 22, weight: .medium))
+                .italic()
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: 200, alignment: .leading)
+            Spacer(minLength: 0)
+            HStack(spacing: 12) {
+                InkMeta(symbol: "calendar", text: "\(plan.days.count) days")
+                InkMeta(symbol: "list.bullet", text: "\(plan.totalExercises) exercises")
+                InkMeta(symbol: plan.source.symbol, text: plan.source.shortLabel)
             }
         }
-        .cardStyle(radius: 22)
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(isActive ? Theme.accent.opacity(0.5) : Color.clear, lineWidth: 1.5)
-        )
+        .frame(maxWidth: .infinity, minHeight: 138, alignment: .topLeading)
+        .overlay(alignment: .bottomTrailing) {
+            FigureArt(symbol: Theme.figure(for: plan.goal), size: 104)
+                .offset(x: 12, y: 22)
+        }
+        .pastelCard(color)
     }
 }
 
@@ -156,9 +148,9 @@ private struct ExerciseLibraryLink: View {
             ExerciseLibraryView()
         } label: {
             HStack(spacing: 14) {
-                GradientIcon(symbol: "books.vertical.fill", gradient: Theme.accentGradient, size: 44)
+                IconBadge(symbol: "books.vertical.fill", size: 44)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Exercise library").font(.headline).foregroundStyle(.white)
+                    Text("Exercise library").font(.system(size: 16, weight: .medium)).foregroundStyle(.white)
                     Text("\(ExerciseLibrary.all.count) exercises with form cues")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
@@ -166,7 +158,7 @@ private struct ExerciseLibraryLink: View {
                 Spacer()
                 Image(systemName: "chevron.right").foregroundStyle(Theme.textTertiary)
             }
-            .cardStyle(padding: 14, radius: 20)
+            .cardStyle(padding: 14, radius: 22)
         }
         .buttonStyle(PressableStyle())
     }
@@ -199,6 +191,7 @@ struct ExerciseLibraryView: View {
         .appBackground()
         .navigationTitle("Exercises")
         .searchable(text: $search, prompt: "Search exercises")
+        .resumeWorkoutBar()
     }
 }
 
@@ -209,20 +202,17 @@ struct ExerciseInfoRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                Image(systemName: exercise.primary.symbol)
-                    .font(.headline)
-                    .foregroundStyle(Theme.color(for: exercise.primary))
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(Theme.color(for: exercise.primary).opacity(0.15)))
+                IconBadge(symbol: exercise.primary.symbol, background: Theme.color(for: exercise.primary),
+                          foreground: Theme.ink, size: 40)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(exercise.name).font(.subheadline.weight(.bold))
+                    Text(exercise.name).font(.subheadline.weight(.medium))
                     Text("\(exercise.primary.displayName) · \(exercise.equipmentLabel)")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.down")
-                    .font(.caption.weight(.bold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.textTertiary)
                     .rotationEffect(.degrees(expanded ? 180 : 0))
             }
@@ -237,7 +227,7 @@ struct ExerciseInfoRow: View {
                 }
             }
         }
-        .cardStyle(padding: 12, radius: 18)
+        .cardStyle(padding: 12, radius: 20)
         .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { expanded.toggle() }
@@ -260,7 +250,7 @@ struct MuscleFilterBar: View {
                         selection = selection == muscle ? nil : muscle
                         Haptics.tap()
                     } label: {
-                        Chip(title: muscle.displayName, isSelected: selection == muscle, tint: Theme.color(for: muscle))
+                        Chip(title: muscle.displayName, isSelected: selection == muscle)
                     }
                     .buttonStyle(.plain)
                 }

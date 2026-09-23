@@ -1,51 +1,72 @@
 import SwiftUI
 
-/// Grid of fitness goal cards.
-struct GoalGrid: View {
-    @Binding var selection: FitnessGoal
-
-    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-
-    var body: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
-            ForEach(FitnessGoal.allCases) { goal in
-                GoalCard(goal: goal, isSelected: selection == goal)
-                    .onTapGesture {
-                        selection = goal
-                        Haptics.tap()
-                    }
-            }
-        }
-    }
-}
-
-private struct GoalCard: View {
-    let goal: FitnessGoal
+/// A dark list row with an icon, title, subtitle and a radio indicator.
+struct OptionRow: View {
+    let symbol: String
+    let title: String
+    let subtitle: String?
     let isSelected: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            GradientIcon(symbol: goal.symbol, gradient: Theme.tint(for: goal), size: 40, foreground: .white)
-            Text(goal.title)
-                .font(.system(.headline, design: .rounded).weight(.bold))
-            Text(goal.subtitle)
-                .font(.caption)
-                .foregroundStyle(Theme.textSecondary)
-                .lineLimit(2, reservesSpace: true)
+        HStack(spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(isSelected ? Color.black : Color.white)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(isSelected ? Color.white : Theme.surfaceHigh))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(.white)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            Spacer(minLength: 8)
+            ZStack {
+                Circle()
+                    .strokeBorder(isSelected ? Color.white : Theme.textTertiary, lineWidth: 1.5)
+                    .frame(width: 24, height: 24)
+                if isSelected {
+                    Circle().fill(Color.white).frame(width: 14, height: 14)
+                }
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(isSelected ? Theme.surfaceRaised : Theme.surface)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(isSelected ? AnyShapeStyle(Theme.tint(for: goal)) : AnyShapeStyle(Theme.stroke),
-                              lineWidth: isSelected ? 2 : 1)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(isSelected ? Color.white.opacity(0.35) : Theme.stroke, lineWidth: 1)
         )
-        .scaleEffect(isSelected ? 1.0 : 0.98)
-        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: isSelected)
+        .contentShape(Rectangle())
+        .animation(.easeOut(duration: 0.15), value: isSelected)
+    }
+}
+
+/// Fitness goal picker.
+struct GoalGrid: View {
+    @Binding var selection: FitnessGoal
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ForEach(FitnessGoal.allCases) { goal in
+                Button {
+                    selection = goal
+                    Haptics.tap()
+                } label: {
+                    OptionRow(symbol: goal.symbol, title: goal.title, subtitle: goal.subtitle,
+                              isSelected: selection == goal)
+                }
+                .buttonStyle(PressableStyle())
+            }
+        }
     }
 }
 
@@ -55,34 +76,12 @@ struct LevelPicker: View {
     var body: some View {
         VStack(spacing: 10) {
             ForEach(ExperienceLevel.allCases) { level in
-                let selected = selection == level
                 Button {
                     selection = level
                     Haptics.tap()
                 } label: {
-                    HStack(spacing: 14) {
-                        GradientIcon(symbol: level.symbol,
-                                     gradient: selected ? Theme.accentGradient : LinearGradient(colors: [Theme.surfaceRaised], startPoint: .top, endPoint: .bottom),
-                                     size: 42,
-                                     foreground: selected ? .black : .white)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(level.title).font(.headline)
-                            Text(level.subtitle)
-                                .font(.caption)
-                                .foregroundStyle(Theme.textSecondary)
-                                .multilineTextAlignment(.leading)
-                        }
-                        Spacer()
-                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                            .font(.title3)
-                            .foregroundStyle(selected ? Theme.accent : Theme.textTertiary)
-                    }
-                    .padding(14)
-                    .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.surface))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .strokeBorder(selected ? Theme.accent.opacity(0.7) : Theme.stroke, lineWidth: selected ? 1.5 : 1)
-                    )
+                    OptionRow(symbol: level.symbol, title: level.title, subtitle: level.subtitle,
+                              isSelected: selection == level)
                 }
                 .buttonStyle(PressableStyle())
             }
@@ -102,14 +101,11 @@ struct DaysPerWeekPicker: View {
                     Haptics.tap()
                 } label: {
                     Text("\(value)")
-                        .font(.system(.title3, design: .rounded).weight(.bold))
+                        .font(.system(size: 20, weight: .semibold))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 52)
+                        .frame(height: 54)
                         .foregroundStyle(selected ? Color.black : Color.white)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(selected ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.surfaceRaised))
-                        )
+                        .background(Circle().fill(selected ? Color.white : Theme.surfaceRaised))
                 }
                 .buttonStyle(PressableStyle())
             }
@@ -129,17 +125,18 @@ struct SessionLengthPicker: View {
                     minutes = value
                     Haptics.tap()
                 } label: {
-                    VStack(spacing: 2) {
+                    VStack(spacing: 1) {
                         Text("\(value)")
-                            .font(.system(.headline, design: .rounded).weight(.bold))
+                            .font(.system(size: 17, weight: .semibold))
                         Text("min").font(.caption2)
+                            .foregroundStyle(selected ? Theme.inkSecondary : Theme.textSecondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                    .frame(height: 56)
                     .foregroundStyle(selected ? Color.black : Color.white)
                     .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(selected ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.surfaceRaised))
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(selected ? Color.white : Theme.surfaceRaised)
                     )
                 }
                 .buttonStyle(PressableStyle())
@@ -175,7 +172,7 @@ struct EquipmentSelector: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Text(category.rawValue.uppercased())
-                            .font(.caption.weight(.bold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(Theme.textSecondary)
                         Spacer()
                         let items = Equipment.inCategory(category)
@@ -188,8 +185,8 @@ struct EquipmentSelector: View {
                             }
                             Haptics.tap()
                         }
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.white)
                     }
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(Equipment.inCategory(category)) { item in
@@ -217,24 +214,25 @@ private struct EquipmentTile: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: item.symbol)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(isSelected ? Color.black : Theme.textSecondary)
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(isSelected ? Color.white : Theme.textSecondary)
                 .frame(width: 40, height: 40)
-                .background(
-                    Circle().fill(isSelected ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Color.white.opacity(0.06)))
-                )
+                .background(Circle().fill(isSelected ? Theme.ink : Color.white.opacity(0.06)))
             Text(item.displayName)
-                .font(.caption.weight(.semibold))
+                .font(.caption.weight(.medium))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
-                .foregroundStyle(isSelected ? Color.white : Theme.textSecondary)
+                .foregroundStyle(isSelected ? Theme.ink : Theme.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(isSelected ? Color.white : Theme.surface)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(isSelected ? Theme.accent.opacity(0.6) : Theme.stroke, lineWidth: isSelected ? 1.5 : 1)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(isSelected ? Color.clear : Theme.stroke, lineWidth: 1)
         )
         .animation(.easeOut(duration: 0.15), value: isSelected)
     }
@@ -259,8 +257,7 @@ struct MuscleFocusPicker: View {
                     }
                     Haptics.tap()
                 } label: {
-                    Chip(title: muscle.displayName, isSelected: selection.contains(muscle),
-                         tint: Theme.color(for: muscle))
+                    Chip(title: muscle.displayName, isSelected: selection.contains(muscle))
                 }
                 .buttonStyle(.plain)
             }

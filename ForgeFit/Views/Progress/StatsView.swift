@@ -99,7 +99,7 @@ private struct WeeklyVolumeChart: View {
                 ForEach(stats) { week in
                     VStack(spacing: 4) {
                         Text("\(week.workouts)")
-                            .font(.caption.weight(.bold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(week.workouts > 0 ? Theme.accent : Theme.textTertiary)
                         Circle()
                             .fill(week.workouts > 0 ? Theme.accent : Color.white.opacity(0.1))
@@ -234,7 +234,7 @@ private struct ExerciseProgressCard: View {
                                 .lineLimit(1)
                             Image(systemName: "chevron.up.chevron.down")
                         }
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.accent)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -300,7 +300,7 @@ private struct PersonalRecordsCard: View {
             HStack {
                 Text("Personal records").font(.headline)
                 Spacer()
-                Image(systemName: "trophy.fill").foregroundStyle(Theme.warmGradient)
+                Image(systemName: "trophy.fill").foregroundStyle(Theme.orange)
             }
             if records.isEmpty {
                 Text("Your best lifts will show up here.")
@@ -310,10 +310,10 @@ private struct PersonalRecordsCard: View {
             ForEach(Array(records.enumerated()), id: \.element.id) { index, record in
                 HStack(spacing: 12) {
                     Text("\(index + 1)")
-                        .font(.caption.weight(.heavy))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(index == 0 ? Color.black : Color.white)
                         .frame(width: 26, height: 26)
-                        .background(Circle().fill(index == 0 ? AnyShapeStyle(Theme.warmGradient) : AnyShapeStyle(Theme.surfaceRaised)))
+                        .background(Circle().fill(index == 0 ? Color.white : Theme.surfaceRaised))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(ExerciseLibrary.name(for: record.exerciseID)).font(.subheadline.weight(.semibold))
                         Text("\(WeightUnit.format(record.weightKg, metric: metric)) \(unit) × \(record.reps) · \(Format.dayMonth.string(from: record.date))")
@@ -323,7 +323,7 @@ private struct PersonalRecordsCard: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: 0) {
                         Text(WeightUnit.format(record.estimatedOneRepMax, metric: metric, decimals: 0))
-                            .font(.system(.headline, design: .rounded).weight(.bold))
+                            .font(.system(.headline).weight(.semibold))
                         Text("e1RM").font(.caption2).foregroundStyle(Theme.textTertiary)
                     }
                 }
@@ -350,7 +350,7 @@ private struct HistoryList: View {
             LazyVStack(alignment: .leading, spacing: 12) {
                 ForEach(order, id: \.self) { month in
                     Text(month.uppercased())
-                        .font(.caption.weight(.heavy))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
                         .padding(.top, 6)
                     ForEach(groups[month] ?? []) { session in
@@ -391,10 +391,10 @@ struct SessionDetailView: View {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(Format.dayMonth.string(from: session.startedAt).uppercased())
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
                     Text(session.name)
-                        .font(.system(size: 30, weight: .heavy, design: .rounded))
+                        .font(.system(size: 30, weight: .semibold))
                 }
                 HStack(spacing: 12) {
                     StatTile(value: Format.minutes(session.duration), label: "Duration", symbol: "clock.fill", tint: Theme.blue)
@@ -446,6 +446,7 @@ struct SessionDetailView: View {
                 }
             }
         }
+        .resumeWorkoutBar()
         .confirmationDialog("Delete this workout?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 dismiss()

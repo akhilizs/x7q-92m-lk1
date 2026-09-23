@@ -100,8 +100,7 @@ struct GeneratePlanView: View {
                     Label(mode == .ai ? "Generate with AI" : "Generate instantly",
                           systemImage: mode == .ai ? "sparkles" : "wand.and.stars")
                 }
-                .buttonStyle(PrimaryButtonStyle(gradient: mode == .ai ? Theme.aiGradient : Theme.accentGradient,
-                                                foreground: mode == .ai ? .white : .black))
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(mode == .ai && !store.hasAPIKey)
                 .opacity(mode == .ai && !store.hasAPIKey ? 0.5 : 1)
             }
@@ -122,14 +121,12 @@ struct GeneratePlanView: View {
                             Image(systemName: m == .ai ? "sparkles" : "bolt.fill")
                             Text(m.rawValue)
                         }
-                        .font(.subheadline.weight(.bold))
+                        .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .foregroundStyle(mode == m ? (m == .ai ? Color.white : Color.black) : Theme.textSecondary)
+                        .foregroundStyle(mode == m ? Color.black : Theme.textSecondary)
                         .background(
-                            Capsule().fill(mode == m
-                                           ? AnyShapeStyle(m == .ai ? Theme.aiGradient : Theme.accentGradient)
-                                           : AnyShapeStyle(Theme.surface))
+                            Capsule().fill(mode == m ? Color.white : Theme.surfaceRaised)
                         )
                     }
                     .buttonStyle(PressableStyle())
@@ -155,7 +152,7 @@ struct GeneratePlanView: View {
     private func section<Content: View>(_ title: String, symbol: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(title, systemImage: symbol)
-                .font(.subheadline.weight(.bold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.textSecondary)
             content()
         }
@@ -272,7 +269,7 @@ private struct GeneratingOverlay: View {
                 }
                 VStack(spacing: 8) {
                     Text(isAI ? "Your coach is designing your plan" : "Generating")
-                        .font(.system(.title3, design: .rounded).weight(.bold))
+                        .font(.system(.title3).weight(.semibold))
                         .multilineTextAlignment(.center)
                     Text(text)
                         .font(.subheadline.monospacedDigit())

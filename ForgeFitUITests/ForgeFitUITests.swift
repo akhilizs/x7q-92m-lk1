@@ -16,7 +16,11 @@ final class ForgeFitUITests: XCTestCase {
         app.launch()
 
         // Onboarding
-        tap(app.buttons["Get Started"])
+        XCTAssertTrue(app.staticTexts["Take your body\nto the peak."].waitForExistence(timeout: 5)
+                      || app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Let's Go")).firstMatch.exists)
+        snap("00-welcome")
+        tapButton(containing: "Let's Go")
+        XCTAssertTrue(app.staticTexts["What should we call you?"].waitForExistence(timeout: 5))
         snap("01-onboarding-name")
         let nameField = app.textFields["Your name"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 5))
@@ -35,7 +39,7 @@ final class ForgeFitUITests: XCTestCase {
         tapButton(containing: "Let's go")
 
         // Home
-        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH ', Alex'")).firstMatch.exists)
         snap("05-home")
 
@@ -53,11 +57,11 @@ final class ForgeFitUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Great work!"].waitForExistence(timeout: 5))
         snap("07-finish-workout")
         tapButton(containing: "Save workout")
-        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
         snap("08-home-after-workout")
 
         // Plans
-        app.tabBars.buttons["Plans"].tap()
+        app.buttons["Plans"].tap()
         XCTAssertTrue(app.navigationBars["Plans"].waitForExistence(timeout: 5))
         snap("09-plans")
         tapButton(containing: "Generate a plan")
@@ -71,6 +75,8 @@ final class ForgeFitUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Your New Plan"].waitForExistence(timeout: 8))
         snap("12-generated-plan")
         tapButton(containing: "Save & make active")
+        XCTAssertTrue(app.navigationBars["Plans"].waitForExistence(timeout: 5))
+        snap("12b-plans-list")
 
         // Custom builder + exercise picker
         tapButton(containing: "Build your own")
@@ -82,15 +88,15 @@ final class ForgeFitUITests: XCTestCase {
         tap(app.navigationBars["Build Plan"].buttons["Cancel"])
 
         // Coach
-        app.tabBars.buttons["Coach"].tap()
+        app.buttons["Coach"].tap()
         XCTAssertTrue(app.buttons["Add API key"].waitForExistence(timeout: 5))
         snap("14-coach")
 
         // Progress + Profile
-        app.tabBars.buttons["Progress"].tap()
+        app.buttons["Progress"].tap()
         XCTAssertTrue(app.navigationBars["Progress"].waitForExistence(timeout: 5))
         snap("15-progress")
-        app.tabBars.buttons["Profile"].tap()
+        app.buttons["Profile"].tap()
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
         snap("16-profile")
     }
@@ -100,10 +106,14 @@ final class ForgeFitUITests: XCTestCase {
         app.launchArguments = ["-uiTestReset", "-uiTestDemoHistory"]
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
         snap("20-home-with-history")
+        app.swipeUp()
+        snap("20b-home-scrolled")
+        app.swipeUp()
+        snap("20c-home-bottom")
 
-        app.tabBars.buttons["Progress"].tap()
+        app.buttons["Progress"].tap()
         XCTAssertTrue(app.navigationBars["Progress"].waitForExistence(timeout: 5))
         snap("21-progress-overview")
         app.swipeUp()
@@ -121,7 +131,9 @@ final class ForgeFitUITests: XCTestCase {
             snap("25-session-detail")
         }
 
-        app.tabBars.buttons["Plans"].tap()
+        app.buttons["Plans"].tap()
+        XCTAssertTrue(app.navigationBars["Plans"].waitForExistence(timeout: 5))
+        snap("26a-plans")
         let active = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Active'")).firstMatch
         XCTAssertTrue(active.waitForExistence(timeout: 5))
         active.tap()

@@ -106,11 +106,11 @@ struct ActiveWorkoutView: View {
 
                 VStack(spacing: 2) {
                     Text(session?.name ?? "Workout")
-                        .font(.system(.headline, design: .rounded).weight(.bold))
+                        .font(.system(.headline).weight(.semibold))
                         .lineLimit(1)
                     TimelineView(.periodic(from: .now, by: 1)) { _ in
                         Text(Format.duration(session?.duration ?? 0))
-                            .font(.system(.subheadline, design: .rounded).weight(.semibold).monospacedDigit())
+                            .font(.system(.subheadline).weight(.semibold).monospacedDigit())
                             .foregroundStyle(Theme.accent)
                     }
                 }
@@ -121,7 +121,7 @@ struct ActiveWorkoutView: View {
                     showFinish = true
                 } label: {
                     Text("Finish")
-                        .font(.subheadline.weight(.heavy))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.black)
                         .padding(.horizontal, 16)
                         .frame(height: 40)
@@ -132,7 +132,7 @@ struct ActiveWorkoutView: View {
             HStack(spacing: 10) {
                 ProgressBar(value: session?.progress ?? 0)
                 Text("\(session?.completedSetCount ?? 0)/\(session?.totalSetCount ?? 0) sets")
-                    .font(.caption.weight(.bold).monospacedDigit())
+                    .font(.caption.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Theme.textSecondary)
             }
         }
@@ -235,7 +235,7 @@ struct ExerciseLogCard: View {
                     addSet()
                 } label: {
                     Label("Add set", systemImage: "plus")
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(Capsule().fill(Theme.surfaceRaised))
@@ -247,7 +247,7 @@ struct ExerciseLogCard: View {
                         Haptics.tap()
                     } label: {
                         Label("Remove set", systemImage: "minus")
-                            .font(.caption.weight(.bold))
+                            .font(.caption.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .background(Capsule().fill(Theme.surfaceRaised))
@@ -269,7 +269,7 @@ struct ExerciseLogCard: View {
                 .background(Circle().fill(Theme.color(for: muscle).opacity(0.15)))
             VStack(alignment: .leading, spacing: 4) {
                 Text(exercise.name)
-                    .font(.system(.headline, design: .rounded).weight(.bold))
+                    .font(.system(.headline).weight(.semibold))
                 Text(targetText)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
@@ -318,7 +318,7 @@ struct ExerciseLogCard: View {
             }
             Image(systemName: "checkmark").frame(width: 38)
         }
-        .font(.caption2.weight(.heavy))
+        .font(.caption2.weight(.semibold))
         .foregroundStyle(Theme.textTertiary)
     }
 
@@ -375,7 +375,7 @@ struct SetRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Text("\(number)")
-                .font(.system(.subheadline, design: .rounded).weight(.heavy))
+                .font(.system(.subheadline).weight(.semibold))
                 .frame(width: 30, height: 30)
                 .background(Circle().fill(set.completed ? Theme.accent.opacity(0.25) : Theme.surfaceRaised))
 
@@ -408,7 +408,7 @@ struct SetRow: View {
 
             Button(action: onToggle) {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 15, weight: .heavy))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(set.completed ? Color.black : Theme.textTertiary)
                     .frame(width: 38, height: 34)
                     .background(
@@ -430,7 +430,7 @@ struct SetRow: View {
 
     private func inputBox<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
-            .font(.system(.subheadline, design: .rounded).weight(.bold))
+            .font(.system(.subheadline).weight(.semibold))
             .padding(.vertical, 8)
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.surfaceRaised))
     }
@@ -476,23 +476,23 @@ struct RestTimerBar: View {
                         .stroke(Theme.accentGradient, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     Image(systemName: "timer")
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.accent)
                 }
                 .frame(width: 46, height: 46)
                 VStack(alignment: .leading, spacing: 0) {
                     Text("REST")
-                        .font(.caption2.weight(.heavy))
+                        .font(.caption2.weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
                     Text(Format.duration(remaining.rounded(.up)))
-                        .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
+                        .font(.system(size: 28, weight: .bold).monospacedDigit())
                 }
                 Spacer()
                 timerButton("-15") { onAdjust(-15) }
                 timerButton("+15") { onAdjust(15) }
                 Button(action: onSkip) {
                     Text("Skip")
-                        .font(.subheadline.weight(.heavy))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.black)
                         .padding(.horizontal, 14)
                         .frame(height: 38)
@@ -510,7 +510,7 @@ struct RestTimerBar: View {
     private func timerButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.caption.weight(.bold).monospacedDigit())
+                .font(.caption.weight(.semibold).monospacedDigit())
                 .frame(width: 44, height: 38)
                 .background(Capsule().fill(Theme.surfaceRaised))
         }

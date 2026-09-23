@@ -14,38 +14,97 @@ struct OnboardingView: View {
     @State private var generatedPlan: WorkoutPlan?
 
     var body: some View {
-        VStack(spacing: 0) {
-            if step != .welcome && step != .building {
-                header
-            }
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .id(step)
-                .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
-                                        removal: .move(edge: .leading).combined(with: .opacity)))
-            if step != .welcome {
-                footer
+        ZStack {
+            if step == .welcome {
+                welcome
+                    .transition(.opacity)
+            } else {
+                VStack(spacing: 0) {
+                    if step != .building { header }
+                    content
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .id(step)
+                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                                removal: .move(edge: .leading).combined(with: .opacity)))
+                    footer
+                }
+                .appBackground()
+                .transition(.opacity)
             }
         }
-        .appBackground()
-        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: step)
+        .animation(.spring(response: 0.45, dampingFraction: 0.88), value: step)
+    }
+
+    // MARK: Welcome
+
+    private var welcome: some View {
+        ZStack(alignment: .bottom) {
+            PhotoBackdrop(name: "HeroAthlete", alignment: .top, gradientStart: 0.3)
+                .ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 10) {
+                    Image(systemName: "dumbbell.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.black)
+                        .frame(width: 26, height: 26)
+                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white))
+                    Text("ForgeFit")
+                        .font(.system(size: 15, weight: .semibold))
+                    Spacer()
+                }
+                Spacer()
+                Text("Welcome to ForgeFit")
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(.bottom, 16)
+                Text("Take your body\nto the peak.")
+                    .font(.system(size: 38, weight: .regular))
+                    .lineSpacing(2)
+                    .padding(.bottom, 12)
+                Text("Your AI coach builds the plan, adapts it to how you feel and tracks every rep. Let's set you up.")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.6))
+                    .padding(.bottom, 28)
+                Button {
+                    next()
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("Let's Go")
+                        Image(systemName: "arrow.right")
+                    }
+                }
+                .buttonStyle(GlassButtonStyle())
+                Button("Skip for now") { skip() }
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 14)
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 12)
+        }
+        .background(Color.black)
     }
 
     // MARK: Header / footer
 
     private var header: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 16) {
             Button {
                 back()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .semibold))
                     .frame(width: 40, height: 40)
                     .background(Circle().fill(Theme.surfaceRaised))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Back")
-            ProgressBar(value: Double(step.rawValue) / Double(Step.allCases.count - 2))
+            DashProgress(current: step.rawValue - 1, total: Step.allCases.count - 2)
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
@@ -59,7 +118,7 @@ struct OnboardingView: View {
         }
         .buttonStyle(PrimaryButtonStyle())
         .disabled(!canContinue)
-        .opacity(canContinue ? 1 : 0.4)
+        .opacity(canContinue ? 1 : 0.35)
         .padding(.horizontal, 20)
         .padding(.bottom, 12)
     }
@@ -77,7 +136,7 @@ struct OnboardingView: View {
     @ViewBuilder
     private var content: some View {
         switch step {
-        case .welcome: welcome
+        case .welcome: EmptyView()
         case .name: nameStep
         case .goal:
             StepScroll(title: "What's your main goal?", subtitle: "Your plan, sets and reps are tuned to it.") {
@@ -98,64 +157,31 @@ struct OnboardingView: View {
         }
     }
 
-    private var welcome: some View {
-        VStack(spacing: 28) {
-            Spacer()
-            ZStack {
-                Circle()
-                    .fill(Theme.accentGradient)
-                    .frame(width: 180, height: 180)
-                    .blur(radius: 60)
-                    .opacity(0.5)
-                GradientIcon(symbol: "dumbbell.fill", size: 110)
-                    .rotationEffect(.degrees(-12))
-            }
-            VStack(spacing: 12) {
-                Text("ForgeFit")
-                    .font(.system(size: 46, weight: .heavy, design: .rounded))
-                Text("Your AI-powered gym coach.\nSmart plans, effortless tracking, real results.")
-                    .font(.body)
-                    .foregroundStyle(Theme.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-            VStack(alignment: .leading, spacing: 14) {
-                FeatureRow(symbol: "sparkles", title: "AI-built plans", text: "Tailored to your goal and equipment")
-                FeatureRow(symbol: "bubble.left.and.bubble.right.fill", title: "Coach chat", text: "Talk through struggles, get a better plan")
-                FeatureRow(symbol: "chart.line.uptrend.xyaxis", title: "Track everything", text: "Sets, PRs, volume and body weight")
-            }
-            .padding(.horizontal, 8)
-            Spacer()
-            Button("Get Started") { next() }
-                .buttonStyle(PrimaryButtonStyle())
-        }
-        .padding(24)
-    }
-
     private var nameStep: some View {
-        StepScroll(title: "First, what should we call you?", subtitle: "Your coach will use it to keep things personal.") {
+        StepScroll(title: "What should we call you?", subtitle: "Your coach will use it to keep things personal.") {
             TextField("Your name", text: $draft.name)
-                .font(.system(.title2, design: .rounded).weight(.semibold))
+                .font(.system(size: 22, weight: .medium))
                 .textInputAutocapitalization(.words)
                 .submitLabel(.continue)
                 .onSubmit { if canContinue { next() } }
                 .padding(18)
-                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.stroke))
+                .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.surface))
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.stroke))
         }
     }
 
     private var scheduleStep: some View {
         StepScroll(title: "How often can you train?", subtitle: "Be realistic — consistency beats intensity.") {
-            VStack(alignment: .leading, spacing: 22) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Days per week", systemImage: "calendar")
-                        .font(.subheadline.weight(.semibold))
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Days per week")
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(Theme.textSecondary)
                     DaysPerWeekPicker(days: $draft.daysPerWeek)
                 }
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Minutes per session", systemImage: "timer")
-                        .font(.subheadline.weight(.semibold))
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Minutes per session")
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(Theme.textSecondary)
                     SessionLengthPicker(minutes: $draft.sessionMinutes)
                 }
@@ -179,13 +205,13 @@ struct OnboardingView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Injuries, limitations or preferences")
-                        .font(.caption.weight(.semibold))
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(Theme.textSecondary)
                     TextField("e.g. sore lower back, love deadlifts, hate lunges", text: $draft.notes, axis: .vertical)
                         .lineLimit(3...5)
                         .padding(14)
-                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
-                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.stroke))
+                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.stroke))
                 }
             }
         }
@@ -196,45 +222,46 @@ struct OnboardingView: View {
             Spacer()
             if let plan = generatedPlan {
                 VStack(spacing: 18) {
-                    ZStack {
-                        Circle().fill(Theme.accentGradient).frame(width: 90, height: 90)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 40, weight: .heavy))
-                            .foregroundStyle(.black)
-                    }
-                    .transition(.scale.combined(with: .opacity))
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 34, weight: .bold))
+                        .foregroundStyle(.black)
+                        .frame(width: 84, height: 84)
+                        .background(Circle().fill(.white))
+                        .transition(.scale.combined(with: .opacity))
                     Text("Your plan is ready, \(draft.firstName)!")
-                        .font(.system(.title, design: .rounded).weight(.bold))
+                        .font(.system(size: 28, weight: .semibold))
                         .multilineTextAlignment(.center)
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text(plan.name).font(.headline)
+                            InkTag(text: "\(plan.days.count) days / week")
                             Spacer()
-                            TagLabel(text: "\(plan.days.count) days/week", color: Theme.accent)
                         }
+                        Text(plan.name)
+                            .font(.system(size: 22, weight: .medium))
+                            .italic()
                         ForEach(plan.days) { day in
                             HStack {
-                                Text(day.name).font(.subheadline.weight(.semibold))
+                                Text(day.name).font(.subheadline.weight(.medium))
                                 Spacer()
                                 Text("\(day.exercises.count) exercises · ~\(day.estimatedMinutes) min")
                                     .font(.caption)
-                                    .foregroundStyle(Theme.textSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                             }
                         }
                     }
-                    .cardStyle()
+                    .pastelCard(Theme.paper)
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "sparkles").foregroundStyle(Theme.violet)
+                        Image(systemName: "sparkles")
                         Text("Want it even more personal? Add your Anthropic API key in Profile to unlock the AI coach — it can rebuild this plan and adapt it as you go.")
                             .font(.footnote)
-                            .foregroundStyle(Theme.textSecondary)
                     }
+                    .foregroundStyle(Theme.textSecondary)
                     .padding(.horizontal, 4)
                 }
             } else {
-                CoachOrb(size: 90, animating: true)
+                CoachOrb(size: 88, animating: true)
                 Text("Building your plan…")
-                    .font(.system(.title2, design: .rounded).weight(.bold))
+                    .font(.system(size: 24, weight: .semibold))
                 Text("Matching exercises to your goal, schedule and equipment.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
@@ -274,6 +301,12 @@ struct OnboardingView: View {
         if let previous = Step(rawValue: step.rawValue - 1) { step = previous }
     }
 
+    /// Starts with sensible defaults; everything can be changed later in Profile.
+    private func skip() {
+        generatedPlan = PlanGenerator.generate(profile: draft)
+        finish()
+    }
+
     private func applyBodyDetails() {
         if let weight = Double(weightText.replacingOccurrences(of: ",", with: ".")), weight > 0 {
             draft.bodyWeightKg = WeightUnit.toKg(weight, metric: draft.useMetric)
@@ -302,10 +335,10 @@ private struct StepScroll<Content: View>: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(title)
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .font(.system(size: 30, weight: .regular))
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
@@ -313,30 +346,9 @@ private struct StepScroll<Content: View>: View {
                 content
             }
             .padding(20)
-            .padding(.top, 8)
+            .padding(.top, 12)
         }
         .scrollDismissesKeyboard(.interactively)
-    }
-}
-
-private struct FeatureRow: View {
-    let symbol: String
-    let title: String
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: symbol)
-                .font(.headline)
-                .foregroundStyle(Theme.accent)
-                .frame(width: 40, height: 40)
-                .background(Circle().fill(Theme.accent.opacity(0.12)))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline.weight(.bold))
-                Text(text).font(.caption).foregroundStyle(Theme.textSecondary)
-            }
-            Spacer()
-        }
     }
 }
 
@@ -348,14 +360,14 @@ struct LabeledInput: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
             TextField("—", text: $text)
                 .keyboardType(keyboard)
-                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .font(.system(size: 20, weight: .medium))
                 .padding(14)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.stroke))
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.stroke))
         }
     }
 }

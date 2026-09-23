@@ -290,6 +290,35 @@ final class AppStore {
 
     var totalVolumeKg: Double { sessions.reduce(0) { $0 + $1.totalVolumeKg } }
 
+    var volumeLastWeekKg: Double {
+        let start = startOfWeek(Date())
+        guard let previous = calendar.date(byAdding: .weekOfYear, value: -1, to: start) else { return 0 }
+        return sessions.filter { $0.startedAt >= previous && $0.startedAt < start }.reduce(0) { $0 + $1.totalVolumeKg }
+    }
+
+    /// Minutes trained this week.
+    var minutesThisWeek: Double {
+        let start = startOfWeek(Date())
+        return sessions.filter { $0.startedAt >= start }.reduce(0) { $0 + $1.duration / 60 }
+    }
+
+    /// Volume per day of the current week, Monday first.
+    var dailyVolumeThisWeek: [Double] {
+        let start = startOfWeek(Date())
+        var result = Array(repeating: 0.0, count: 7)
+        for s in sessions where s.startedAt >= start {
+            let day = min(max(calendar.dateComponents([.day], from: start, to: s.startedAt).day ?? 0, 0), 6)
+            result[day] += max(s.totalVolumeKg, 1)
+        }
+        return result
+    }
+
+    /// Index of today in a Monday-first week.
+    var todayIndex: Int {
+        let start = startOfWeek(Date())
+        return min(max(calendar.dateComponents([.day], from: start, to: Date()).day ?? 0, 0), 6)
+    }
+
     /// Consecutive weeks (including this one if trained) with at least one workout.
     var weekStreak: Int {
         var streak = 0

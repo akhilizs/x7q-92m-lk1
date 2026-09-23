@@ -89,20 +89,31 @@ struct PlanContentView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 6) {
-                TagLabel(text: plan.source.label, symbol: plan.source.symbol,
-                         color: plan.source == .ai ? Theme.violet : Theme.accent)
-                TagLabel(text: plan.goal.title, symbol: plan.goal.symbol, color: Theme.accentAlt)
-                if isActive { TagLabel(text: "Active", symbol: "bolt.fill", color: Theme.accent) }
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    InkTag(text: plan.goal.title)
+                    InkTag(text: plan.source.label, symbol: plan.source.symbol)
+                    if isActive { InkTag(text: "Active", symbol: "bolt.fill") }
+                }
+                Text(plan.name)
+                    .font(.system(size: 28, weight: .medium))
+                    .italic()
+                    .frame(maxWidth: 240, alignment: .leading)
+                if !plan.summary.isEmpty {
+                    Text(plan.summary)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .frame(maxWidth: 250, alignment: .leading)
+                }
             }
-            Text(plan.name)
-                .font(.system(size: 30, weight: .heavy, design: .rounded))
-            if !plan.summary.isEmpty {
-                Text(plan.summary)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .overlay(alignment: .bottomTrailing) {
+                FigureArt(symbol: Theme.figure(for: plan.goal), size: 110)
+                    .offset(x: 16, y: 26)
             }
+            .pastelCard(Theme.tint(for: plan.goal), padding: 20, radius: 30)
+
             HStack(spacing: 12) {
                 miniStat("\(plan.days.count)", "days / week")
                 miniStat("\(plan.totalExercises)", "exercises")
@@ -119,11 +130,11 @@ struct PlanContentView: View {
 
     private func miniStat(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.system(.title3, design: .rounded).weight(.bold))
-            Text(label).font(.caption2.weight(.semibold)).foregroundStyle(Theme.textSecondary)
+            Text(value).font(.system(size: 20, weight: .semibold))
+            Text(label).font(.caption2).foregroundStyle(Theme.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardStyle(padding: 12, radius: 16)
+        .cardStyle(padding: 12, radius: 18)
     }
 
     private var daySelector: some View {
@@ -137,17 +148,16 @@ struct PlanContentView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("DAY \(index + 1)")
-                                .font(.caption2.weight(.heavy))
-                                .foregroundStyle(selected ? Color.black.opacity(0.6) : Theme.textTertiary)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(selected ? Theme.inkSecondary : Theme.textTertiary)
                             Text(d.name)
-                                .font(.subheadline.weight(.bold))
+                                .font(.subheadline.weight(.medium))
                                 .foregroundStyle(selected ? Color.black : Color.white)
                         }
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(selected ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.surface))
+                            Capsule().fill(selected ? Color.white : Theme.surfaceRaised)
                         )
                     }
                     .buttonStyle(PressableStyle())
@@ -193,14 +203,14 @@ struct PlannedExerciseRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             Text("\(index)")
-                .font(.system(.subheadline, design: .rounded).weight(.heavy))
-                .foregroundStyle(.black)
-                .frame(width: 30, height: 30)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+                .frame(width: 32, height: 32)
                 .background(Circle().fill(Theme.color(for: item.exercise?.primary ?? .fullBody)))
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.name).font(.subheadline.weight(.bold))
+                Text(item.name).font(.system(size: 16, weight: .medium))
                 HStack(spacing: 8) {
-                    TagLabel(text: item.targetLabel, symbol: "repeat", color: Theme.accent)
+                    TagLabel(text: item.targetLabel, symbol: "repeat", color: .white)
                     if item.restSeconds > 0 {
                         TagLabel(text: Format.rest(item.restSeconds), symbol: "timer", color: Theme.textSecondary)
                     }
@@ -217,6 +227,6 @@ struct PlannedExerciseRow: View {
             }
             Spacer(minLength: 0)
         }
-        .cardStyle(padding: 14, radius: 18)
+        .cardStyle(padding: 14, radius: 22)
     }
 }

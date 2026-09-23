@@ -1,16 +1,20 @@
 import SwiftUI
 import UIKit
+import Combine
 
 @main
 struct ForgeFitApp: App {
     @State private var store = AppStore()
 
     init() {
-        let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
-        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterialDark)
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
+        let nav = UINavigationBarAppearance()
+        nav.configureWithTransparentBackground()
+        nav.backgroundColor = .black
+        nav.titleTextAttributes = [.foregroundColor: UIColor.white]
+        nav.largeTitleTextAttributes = [.foregroundColor: UIColor.white,
+                                        .font: UIFont.systemFont(ofSize: 32, weight: .semibold)]
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
     }
 
     var body: some Scene {
@@ -23,8 +27,28 @@ struct ForgeFitApp: App {
     }
 }
 
-enum AppTab: Hashable {
+enum AppTab: Hashable, CaseIterable {
     case home, plans, coach, progress, profile
+
+    var title: String {
+        switch self {
+        case .home: return "Home"
+        case .plans: return "Plans"
+        case .coach: return "Coach"
+        case .progress: return "Progress"
+        case .profile: return "Profile"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .home: return "house.fill"
+        case .plans: return "dumbbell.fill"
+        case .coach: return "sparkles"
+        case .progress: return "chart.bar.fill"
+        case .profile: return "person.fill"
+        }
+    }
 }
 
 struct RootView: View {
@@ -48,72 +72,157 @@ struct RootView: View {
     }
 }
 
+private struct FloatingBarSpaceKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    /// Height reserved at the bottom of each tab for the floating tab bar.
+    var floatingBarSpace: CGFloat {
+        get { self[FloatingBarSpaceKey.self] }
+        set { self[FloatingBarSpaceKey.self] = newValue }
+    }
+}
+
 struct MainTabView: View {
     @Environment(AppStore.self) private var store
     @State private var selection: AppTab = .home
+    @State private var keyboardVisible = false
 
     var body: some View {
         @Bindable var store = store
-        TabView(selection: $selection) {
-            HomeView(selection: $selection)
-                .tabItem { Label("Home", systemImage: "house.fill") }
-                .tag(AppTab.home)
-            PlansView()
-                .tabItem { Label("Plans", systemImage: "list.bullet.rectangle.portrait.fill") }
-                .tag(AppTab.plans)
-            CoachChatView()
-                .tabItem { Label("Coach", systemImage: "sparkles") }
-                .tag(AppTab.coach)
-            StatsView()
-                .tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
-                .tag(AppTab.progress)
-            ProfileView()
-                .tabItem { Label("Profile", systemImage: "person.crop.circle.fill") }
-                .tag(AppTab.profile)
+        ZStack(alignment: .bottom) {
+            // All tabs stay alive (keeping their navigation and scroll state);
+            // only the selected one is visible and interactive.
+            ZStack {
+                ForEach(AppTab.allCases, id: \.self) { tab in
+                    let isSelected = selection == tab
+                    tabContent(tab)
+                        .opacity(isSelected ? 1 : 0)
+                        .allowsHitTesting(isSelected)
+                        .accessibilityHidden(!isSelected)
+                }
+            }
+            .environment(\.floatingBarSpace, keyboardVisible ? 0 : 76)
+
+            if !keyboardVisible {
+                FloatingTabBar(selection: $selection)
+                    .padding(.bottom, 6)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: keyboardVisible)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardVisible = false
         }
         .fullScreenCover(isPresented: $store.isWorkoutPresented) {
             ActiveWorkoutView()
                 .environment(store)
         }
     }
+
+    @ViewBuilder
+    private func tabContent(_ tab: AppTab) -> some View {
+        switch tab {
+        case .home: HomeView(selection: $selection)
+        case .plans: PlansView()
+        case .coach: CoachChatView()
+        case .progress: StatsView()
+        case .profile: ProfileView()
+        }
+    }
 }
 
-/// Floating "workout in progress" bar shown when the active workout is minimized.
+/// Capsule tab bar floating above the content; the selected tab becomes a white pill.
+struct FloatingTabBar: View {
+    @Binding var selection: AppTab
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(AppTab.allCases, id: \.self) { tab in
+                let selected = selection == tab
+                Button {
+                    if selection != tab {
+                        selection = tab
+                        Haptics.tap()
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: tab.symbol)
+                            .font(.system(size: 16, weight: .semibold))
+                        if selected {
+                            Text(tab.title)
+                                .font(.system(size: 14, weight: .semibold))
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                    }
+                    .foregroundStyle(selected ? Color.black : Color.white.opacity(0.75))
+                    .padding(.horizontal, selected ? 16 : 0)
+                    .frame(minWidth: 48)
+                    .frame(height: 48)
+                    .background(Capsule().fill(selected ? Color.white : Color.clear))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .padding(6)
+        .background(
+            Capsule()
+                .fill(Color(white: 0.1))
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+                .shadow(color: .black.opacity(0.6), radius: 20, y: 8)
+        )
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selection)
+    }
+}
+
+/// Reserves room for the floating tab bar and shows the "workout in progress"
+/// bar when the active workout is minimized.
 struct ResumeWorkoutBar: ViewModifier {
     @Environment(AppStore.self) private var store
+    @Environment(\.floatingBarSpace) private var barSpace
 
     func body(content: Content) -> some View {
-        content.safeAreaInset(edge: .bottom) {
-            if let session = store.activeSession, !store.isWorkoutPresented {
-                Button {
-                    store.isWorkoutPresented = true
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.headline)
-                            .foregroundStyle(.black)
-                            .frame(width: 36, height: 36)
-                            .background(Circle().fill(Theme.accentGradient))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(session.name).font(.subheadline.weight(.bold))
-                            TimelineView(.periodic(from: .now, by: 1)) { _ in
-                                Text("In progress · \(Format.duration(session.duration))")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(Theme.textSecondary)
+        content.safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 8) {
+                if let session = store.activeSession, !store.isWorkoutPresented {
+                    Button {
+                        store.isWorkoutPresented = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "figure.strengthtraining.traditional")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.black)
+                                .frame(width: 36, height: 36)
+                                .background(Circle().fill(.white))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(session.name).font(.subheadline.weight(.semibold))
+                                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                                    Text("In progress · \(Format.duration(session.duration))")
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(Theme.textSecondary)
+                                }
                             }
+                            Spacer()
+                            Text("Resume")
+                                .font(.subheadline.weight(.semibold))
                         }
-                        Spacer()
-                        Text("Resume")
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(Theme.accent)
+                        .foregroundStyle(.white)
+                        .padding(10)
+                        .background(Capsule().fill(Theme.surfaceRaised))
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.12)))
                     }
-                    .padding(12)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.accent.opacity(0.4)))
+                    .buttonStyle(PressableStyle())
+                    .padding(.horizontal, 16)
                 }
-                .buttonStyle(PressableStyle())
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+                Color.clear.frame(height: barSpace)
             }
         }
     }
