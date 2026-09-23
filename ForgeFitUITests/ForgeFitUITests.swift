@@ -169,6 +169,47 @@ final class ForgeFitUITests: XCTestCase {
         snap("31-coach-error")
     }
 
+    func testAccountScreens() {
+        app = XCUIApplication()
+        // A made-up Supabase project: the account screens appear and requests fail fast.
+        app.launchArguments = ["-uiTestReset", "-SupabaseURL", "https://forgefit-ui-test.invalid",
+                               "-SupabaseKey", "sb_publishable_ui_test"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["I have an account"].waitForExistence(timeout: 5))
+        snap("40-welcome-account")
+        app.buttons["I have an account"].tap()
+        XCTAssertTrue(text(containing: "Log in to bring").waitForExistence(timeout: 5))
+        snap("41-log-in")
+
+        let email = app.textFields["authEmail"]
+        email.tap()
+        email.typeText("alex@example.com")
+        let password = app.secureTextFields["authPassword"]
+        password.tap()
+        password.typeText("secret123")
+        tapButton(containing: "Log in")
+        let failure = app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS[c] 'server' OR label CONTAINS[c] 'internet' OR label CONTAINS[c] 'connection' OR label CONTAINS[c] 'network'"
+        )).firstMatch
+        XCTAssertTrue(failure.waitForExistence(timeout: 30), "A failed login should show an error")
+        snap("42-log-in-error")
+
+        tapButton(containing: "Create an account")
+        XCTAssertTrue(text(containing: "Create a free account").waitForExistence(timeout: 5))
+        snap("43-sign-up")
+        tap(app.navigationBars.buttons["Cancel"])
+
+        tapButton(containing: "Skip for now")
+        XCTAssertTrue(app.buttons["Profile"].waitForExistence(timeout: 5))
+        app.buttons["Profile"].tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS 'Save your progress'")).firstMatch
+            .waitForExistence(timeout: 5))
+        snap("44-profile-account")
+        tapButton(containing: "Save your progress")
+        XCTAssertTrue(text(containing: "Create a free account").waitForExistence(timeout: 5))
+    }
+
     func testProgressWithHistory() {
         app = XCUIApplication()
         app.launchArguments = ["-uiTestReset", "-uiTestDemoHistory"]

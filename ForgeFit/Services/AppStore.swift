@@ -21,10 +21,13 @@ final class AppStore {
     var isWorkoutPresented = false
     var hasAPIKey: Bool = KeychainStore.apiKey != nil
 
+    /// Called whenever persisted data changes (used by cloud sync).
+    @ObservationIgnored var onChange: (() -> Void)?
     @ObservationIgnored private var saveWorkItem: DispatchWorkItem?
     private let fileURL: URL
 
-    private struct Snapshot: Codable {
+    /// Everything the app persists, as saved to disk and to the user's account.
+    struct Snapshot: Codable {
         var hasOnboarded: Bool
         var profile: UserProfile
         var plans: [WorkoutPlan]
@@ -58,9 +61,7 @@ final class AppStore {
         bodyWeights = snapshot?.bodyWeights ?? []
         activeSession = snapshot?.activeSession
         chatMessages = snapshot?.chatMessages ?? []
-        // History from the earlier Claude-based coach can't be replayed to Gemini.
-        let savedHistory = snapshot?.chatHistory ?? []
-        chatHistory = savedHistory.contains { $0.role == "assistant" } ? [] : savedHistory
+        chatHistory = Self.replayableHistory(snapshot?.chatHistory ?? [])
         aiModel = snapshot?.aiModel.flatMap(AIModel.init(rawValue:)) ?? .flash
 
         if arguments.contains("-uiTestDemoHistory") {
@@ -69,6 +70,47 @@ final class AppStore {
     }
 
     // MARK: Persistence
+
+    /// History from the earlier Claude-based coach can't be replayed to Gemini.
+    private static func replayableHistory(_ turns: [APITurn]) -> [APITurn] {
+        turns.contains { $0.role == "assistant" } ? [] : turns
+    }
+
+    func makeSnapshot() -> Snapshot {
+        Snapshot(hasOnboarded: hasOnboarded, profile: profile, plans: plans,
+                 activePlanID: activePlanID, sessions: sessions, bodyWeights: bodyWeights,
+                 activeSession: activeSession, chatMessages: chatMessages,
+                 chatHistory: chatHistory, aiModel: aiModel.rawValue)
+    }
+
+    /// Replaces everything with `snapshot` (for example progress loaded from the user's account).
+    func apply(_ snapshot: Snapshot) {
+        hasOnboarded = snapshot.hasOnboarded
+        profile = snapshot.profile
+        plans = snapshot.plans
+        activePlanID = snapshot.activePlanID
+        sessions = snapshot.sessions
+        bodyWeights = snapshot.bodyWeights
+        activeSession = snapshot.activeSession
+        if activeSession == nil { isWorkoutPresented = false }
+        chatMessages = snapshot.chatMessages
+        chatHistory = Self.replayableHistory(snapshot.chatHistory)
+        if let model = snapshot.aiModel.flatMap(AIModel.init(rawValue:)) { aiModel = model }
+        saveNow()
+    }
+
+    /// True once there's something worth keeping beyond the onboarding answers.
+    var hasProgress: Bool {
+        !sessions.isEmpty || !bodyWeights.isEmpty || !chatMessages.isEmpty || activeSession != nil
+    }
+
+    static func encode(_ snapshot: Snapshot) throws -> Data {
+        try encoder.encode(snapshot)
+    }
+
+    static func decode(_ data: Data) -> Snapshot? {
+        try? decoder.decode(Snapshot.self, from: data)
+    }
 
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
@@ -83,6 +125,7 @@ final class AppStore {
     }()
 
     private func scheduleSave() {
+        onChange?()
         saveWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in self?.saveNow() }
         saveWorkItem = item
@@ -92,12 +135,8 @@ final class AppStore {
     func saveNow() {
         saveWorkItem?.cancel()
         saveWorkItem = nil
-        let snapshot = Snapshot(hasOnboarded: hasOnboarded, profile: profile, plans: plans,
-                                activePlanID: activePlanID, sessions: sessions, bodyWeights: bodyWeights,
-                                activeSession: activeSession, chatMessages: chatMessages,
-                                chatHistory: chatHistory, aiModel: aiModel.rawValue)
         do {
-            let data = try Self.encoder.encode(snapshot)
+            let data = try Self.encoder.encode(makeSnapshot())
             try data.write(to: fileURL, options: [.atomic])
         } catch {
             print("ForgeFit: failed to save data: \(error)")

@@ -42,6 +42,11 @@ ForgeFit is a native SwiftUI iPhone app that builds your workout plan, tracks ev
 - When a change would help, it proposes a complete revised plan as a card you can **preview and apply** with one tap.
 - Replies stream in live, and you can stop a reply partway.
 
+**Accounts & cloud save**
+- Create an account with email and password, or log in from the welcome screen ("I have an account") or **Profile → Save your progress**.
+- Your profile, plans, workouts, weigh-ins and coach chat are saved to your account a few seconds after each change, and are downloaded when you log in on another iPhone. If two phones changed at the same time, both sets of workouts are kept.
+- The app still works fully offline, with or without an account. Password reset, change password, log out and delete account are all built in.
+
 **Design**
 - Monochrome "dark mode done right": pure black canvas, graphite cards, white actions and soft pastel program cards with black tags and italic titles.
 - Photo welcome screen, onboarding questions with number wheels and outlined chips, and a floating capsule tab bar.
@@ -70,6 +75,18 @@ If the chosen model is busy (503), over its free-tier limit (429) or not availab
 
 The key is stored in the iOS Keychain on your device. Requests go straight from your phone to Google's Gemini API, and usage beyond the free tier is billed to your Google account. Without a key, everything except AI generation and chat still works offline.
 
+## Set up accounts (Supabase)
+
+Accounts use a free [Supabase](https://supabase.com) project. The project URL and **publishable** key are in `project.yml` (`SUPABASE_URL`, `SUPABASE_KEY`). The publishable key is meant to ship inside apps; row level security limits every account to its own data. **Never put a secret key (`sb_secret_…`) in the app or the repo.**
+
+One-time setup in the Supabase dashboard:
+
+1. **Create the table:** open **SQL Editor → New query**, paste the contents of [`supabase/setup.sql`](supabase/setup.sql), then click **Run**. This creates the `user_data` table, its security rules, and the `delete_user` function the app uses for "Delete account".
+2. **Let email links open the app:** in **Authentication → URL Configuration → Redirect URLs**, add `forgefit://auth-callback`. Confirmation and password-reset emails then bring people straight back into ForgeFit.
+3. **Optional:** in **Authentication → Sign In / Providers → Email**, turn off **Confirm email** if new users should be logged in right after signing up. Supabase's built-in email service only sends a few emails per hour, so for real users also set up custom SMTP (**Authentication → Emails**).
+
+To point a build at a different project, change the two values in `project.yml`. Or set `SUPABASE_URL` and `SUPABASE_KEY` as repository variables (**Settings → Secrets and variables → Actions → Variables**): the Build iOS IPA workflow uses them instead. Leave both empty for an offline-only build.
+
 ## Build it yourself (Mac)
 
 ```bash
@@ -94,10 +111,13 @@ ForgeFit/
     GeminiClient.swift          Streaming Gemini generateContent client (SSE) with free-model fallback
     AIPlanning.swift            AI plan design (structured JSON output) + validation
     CoachViewModel.swift        Coach chat with the update_workout_plan tool
-    KeychainStore.swift         API key storage
+    Supabase.swift              Supabase REST client: email/password auth + one JSON row per user
+    CloudSync.swift             Local-first sync: upload after changes, pull on open, merge conflicts
+    KeychainStore.swift         API key and login storage
     RestNotifier.swift          Rest-timer notifications
   Theme/                        Colors, gradients, button styles, haptics
-  Views/                        Onboarding, Home, Plans, Workout, Progress, Coach, Profile
+  Views/                        Onboarding, Home, Plans, Workout, Progress, Coach, Profile, Account
+supabase/setup.sql              Table, row level security and delete_user function for accounts
 ForgeFitUITests/                Simulator UI tests that walk the main flows and save screenshots
 .github/workflows/build-ipa.yml CI that builds the unsigned IPA
 .github/workflows/ui-tests.yml  CI that runs the UI tests and uploads screenshots
