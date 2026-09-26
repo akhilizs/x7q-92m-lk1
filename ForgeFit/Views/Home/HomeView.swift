@@ -1,26 +1,24 @@
 import SwiftUI
 
+/// "Today": the next workout first, then the week, food, coach, plan and history.
 struct HomeView: View {
     @Environment(AppStore.self) private var store
     @Environment(CoachViewModel.self) private var coach
     @Binding var selection: AppTab
-    @State private var showGenerator = false
-    @State private var showBuilder = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 20) {
                     header
                     if store.isCheckInDue && store.hasAPIKey {
-                        checkInCard
+                        checkInBanner
                     }
-                    WeekSummaryCards()
-                    UpNextCard()
+                    TodayCard()
+                    WeekCard()
                     NutritionHomeCard()
+                    coachBar
                     planDays
-                    coachCard
-                    quickActions
                     recentWorkouts
                 }
                 .padding(.horizontal, 20)
@@ -29,27 +27,33 @@ struct HomeView: View {
             .appBackground()
             .toolbar(.hidden, for: .navigationBar)
             .resumeWorkoutBar()
-            .sheet(isPresented: $showGenerator) { GeneratePlanView().environment(store) }
-            .sheet(isPresented: $showBuilder) { PlanBuilderView(existing: nil).environment(store) }
         }
     }
 
     // MARK: Header
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(greetingText)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.textSecondary)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
+                    .font(.caption.weight(.semibold))
+                    .tracking(0.8)
+                    .foregroundStyle(Theme.textTertiary)
                 Text(store.profile.firstName.isEmpty ? "Hi there" : "Hi, \(store.profile.firstName)")
-                    .font(.system(size: 26, weight: .medium))
+                    .font(.system(size: 32, weight: .medium))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 if store.weekStreak > 0 {
-                    Label(store.weekStreak == 1 ? "1-week streak" : "\(store.weekStreak)-week streak", systemImage: "flame.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.orange)
-                        .padding(.top, 2)
+                    HStack(spacing: 5) {
+                        Image(systemName: "flame.fill")
+                        Text(store.weekStreak == 1 ? "1-week streak" : "\(store.weekStreak)-week streak")
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(Theme.sand))
+                    .padding(.top, 2)
                 }
             }
             Spacer()
@@ -69,25 +73,76 @@ struct HomeView: View {
         .padding(.top, 12)
     }
 
-    private var greetingText: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        switch hour {
-        case 5..<12: return "Good morning, fit human"
-        case 12..<17: return "Good afternoon, fit human"
-        default: return "Good evening, fit human"
-        }
-    }
-
     private var initials: String {
         let letters = store.profile.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
         return letters.isEmpty ? "FF" : letters.uppercased()
+    }
+
+    // MARK: Weekly check-in
+
+    private var checkInBanner: some View {
+        Button {
+            selection = .coach
+            coach.startWeeklyCheckIn(store: store)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "checklist")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(Color.white.opacity(0.55)))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Weekly check-in ready")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Let your coach review the week")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "arrow.right")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.sky))
+        }
+        .buttonStyle(PressableStyle())
+        .disabled(coach.isResponding)
+        .accessibilityLabel("Start weekly check-in")
+    }
+
+    // MARK: Coach
+
+    private var coachBar: some View {
+        Button {
+            selection = .coach
+        } label: {
+            HStack(spacing: 12) {
+                CoachOrb(size: 34)
+                Text("Ask your coach anything…")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(Theme.lilac))
+            }
+            .padding(.leading, 8)
+            .padding(.trailing, 10)
+            .padding(.vertical, 8)
+            .background(Capsule().fill(Theme.surface))
+            .overlay(Capsule().strokeBorder(Theme.stroke))
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel("Ask your coach")
     }
 
     // MARK: Plan days
 
     @ViewBuilder
     private var planDays: some View {
-        if let plan = store.activePlan {
+        if let plan = store.activePlan, plan.days.count > 1 {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeader(title: "Your plan", actionTitle: "See all") { selection = .plans }
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -96,7 +151,8 @@ struct HomeView: View {
                             NavigationLink {
                                 PlanDetailView(planID: plan.id)
                             } label: {
-                                DayCard(day: day, index: index, color: Theme.pastel(index))
+                                DayCard(day: day, index: index, color: Theme.pastel(index),
+                                        isNext: index == min(plan.nextDayIndex, plan.days.count - 1))
                             }
                             .buttonStyle(PressableStyle())
                         }
@@ -108,100 +164,14 @@ struct HomeView: View {
         }
     }
 
-    // MARK: Weekly check-in
-
-    private var checkInCard: some View {
-        Button {
-            selection = .coach
-            coach.startWeeklyCheckIn(store: store)
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "checklist")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 46, height: 46)
-                    .background(Circle().fill(Color.white.opacity(0.6)))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Weekly check-in ready")
-                        .font(.system(size: 17, weight: .semibold))
-                    Text("Your coach reviews your week and fine-tunes the plan.")
-                        .font(.caption)
-                        .foregroundStyle(Theme.inkSecondary)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "arrow.right")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .foregroundStyle(Theme.ink)
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.sky))
-        }
-        .buttonStyle(PressableStyle())
-        .disabled(coach.isResponding)
-        .accessibilityLabel("Start weekly check-in")
-    }
-
-    // MARK: Coach
-
-    private var coachCard: some View {
-        Button {
-            selection = .coach
-        } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                InkTag(text: "AI Coach", symbol: "sparkles")
-                Text("Talk to your coach")
-                    .font(.system(size: 22, weight: .medium))
-                    .italic()
-                Text("Sore knees? No time? Stalled? Tell your coach and it adapts your plan.")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.inkSecondary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: 210, alignment: .leading)
-                HStack(spacing: 6) {
-                    Text("Start chatting")
-                    Image(systemName: "arrow.right")
-                }
-                .font(.footnote.weight(.semibold))
-                .padding(.top, 2)
-            }
-            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-            .overlay(alignment: .bottomTrailing) {
-                FigureArt(symbol: "figure.mind.and.body", size: 92)
-                    .offset(x: 10, y: 14)
-            }
-            .pastelCard(Theme.lilac)
-        }
-        .buttonStyle(PressableStyle())
-    }
-
-    // MARK: Quick actions
-
-    private var quickActions: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Quick actions")
-            HStack(spacing: 12) {
-                QuickAction(symbol: "sparkles", title: "Generate\nplan") { showGenerator = true }
-                QuickAction(symbol: "hammer.fill", title: "Build\nyour own") { showBuilder = true }
-                QuickAction(symbol: "bolt.fill", title: "Quick\nworkout") {
-                    if store.activeSession == nil {
-                        store.startEmptyWorkout()
-                    } else {
-                        store.isWorkoutPresented = true
-                    }
-                }
-            }
-        }
-    }
-
     // MARK: Recent
 
     @ViewBuilder
     private var recentWorkouts: some View {
         if !store.sessions.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                SectionHeader(title: "Recent workouts", actionTitle: "See all") { selection = .progress }
-                ForEach(store.sessions.prefix(3)) { session in
+                SectionHeader(title: "Recent", actionTitle: "See all") { selection = .progress }
+                ForEach(store.sessions.prefix(2)) { session in
                     NavigationLink {
                         SessionDetailView(sessionID: session.id)
                     } label: {
@@ -214,36 +184,271 @@ struct HomeView: View {
     }
 }
 
-private struct QuickAction: View {
-    let symbol: String
-    let title: String
-    let action: () -> Void
+// MARK: - Today
+
+/// The next workout, front and centre: start it, or start an empty session.
+private struct TodayCard: View {
+    @Environment(AppStore.self) private var store
+    @State private var showGenerator = false
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 14) {
-                IconBadge(symbol: symbol, size: 38)
-                Text(title)
-                    .font(.subheadline.weight(.medium))
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+        if let plan = store.activePlan, let day = plan.nextDay {
+            ZStack(alignment: .bottomLeading) {
+                PhotoBackdrop(name: "WorkoutLift", gradientStart: 0.0)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("TODAY · DAY \(min(plan.nextDayIndex, plan.days.count - 1) + 1) OF \(plan.days.count)")
+                            .font(.caption2.weight(.bold))
+                            .tracking(0.6)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.ultraThinMaterial, in: Capsule())
+                        Spacer()
+                        Menu {
+                            ForEach(Array(plan.days.enumerated()), id: \.element.id) { index, d in
+                                Button(d.name) { store.setNextDay(planID: plan.id, index: index) }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.left.arrow.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .frame(width: 32, height: 32)
+                                .background(.ultraThinMaterial, in: Circle())
+                        }
+                        .accessibilityLabel("Change day")
+                    }
+                    Spacer()
+                    Text(day.name)
+                        .font(.system(size: 34, weight: .medium))
+                        .italic()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    HStack(spacing: 12) {
+                        Text(day.focus).lineLimit(1)
+                        Text("·")
+                        Text("\(day.exercises.count) exercises")
+                        Text("·")
+                        Text("~\(day.estimatedMinutes) min")
+                    }
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .padding(.bottom, 6)
+                    HStack(spacing: 10) {
+                        Button {
+                            if store.activeSession != nil {
+                                store.isWorkoutPresented = true
+                            } else {
+                                store.startWorkout(day: day, plan: plan)
+                            }
+                            Haptics.medium()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: store.activeSession == nil ? "play.fill" : "arrow.uturn.forward")
+                                Text(store.activeSession == nil ? "Start Workout" : "Resume Workout")
+                            }
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
+                        if store.activeSession == nil {
+                            Button {
+                                store.startEmptyWorkout()
+                                Haptics.medium()
+                            } label: {
+                                Image(systemName: "bolt.fill")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .frame(width: 56, height: 56)
+                                    .background(.ultraThinMaterial, in: Circle())
+                                    .overlay(Circle().strokeBorder(Color.white.opacity(0.2)))
+                            }
+                            .buttonStyle(PressableStyle())
+                            .accessibilityLabel("Start an empty workout")
+                        }
+                    }
+                }
+                .foregroundStyle(.white)
+                .padding(18)
+            }
+            .frame(height: 280)
+            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).strokeBorder(Theme.stroke))
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                InkTag(text: "No plan yet", symbol: "sparkles")
+                Text("Let's build your plan")
+                    .font(.system(size: 26, weight: .medium))
+                    .italic()
+                Text("Generate one for your goal and equipment, or start an empty workout and log as you go.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkSecondary)
+                HStack(spacing: 10) {
+                    Button("Create a plan") { showGenerator = true }
+                        .buttonStyle(DarkCapsuleButtonStyle())
+                    Button {
+                        store.startEmptyWorkout()
+                    } label: {
+                        Image(systemName: "bolt.fill")
+                            .frame(width: 54, height: 54)
+                            .background(Circle().fill(Theme.ink))
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityLabel("Start an empty workout")
+                }
+                .padding(.top, 4)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cardStyle(padding: 14, radius: 22)
+            .pastelCard(Theme.lilac)
+            .sheet(isPresented: $showGenerator) { GeneratePlanView().environment(store) }
         }
-        .buttonStyle(PressableStyle())
     }
 }
+
+// MARK: - This week
+
+/// Days trained this week, volume and time, in one card.
+private struct WeekCard: View {
+    @Environment(AppStore.self) private var store
+    private let letters = ["M", "T", "W", "T", "F", "S", "S"]
+
+    var body: some View {
+        let metric = store.profile.useMetric
+        let trained = store.trainedDaysThisWeek
+        let today = store.todayIndex
+        let thisWeek = store.volumeThisWeekKg
+        let lastWeek = store.volumeLastWeekKg
+        let targetMinutes = Double(store.profile.daysPerWeek * store.profile.sessionMinutes)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("This week").font(.headline)
+                Spacer()
+                Text("\(store.workoutsThisWeek) of \(store.profile.daysPerWeek) workouts")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { i in
+                    let done = trained.contains(i)
+                    VStack(spacing: 6) {
+                        ZStack {
+                            Circle().fill(done ? Color.white : Color.clear)
+                            Circle().strokeBorder(i == today && !done ? Color.white : Color.white.opacity(done ? 0 : 0.14),
+                                                  lineWidth: 1.5)
+                            if done {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(Theme.ink)
+                            }
+                        }
+                        .frame(width: 34, height: 34)
+                        Text(letters[i])
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(i == today ? .white : Theme.textTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            Rectangle().fill(Theme.stroke).frame(height: 1)
+            HStack(alignment: .top, spacing: 16) {
+                stat(title: "Volume",
+                     value: "\(Format.compact(WeightUnit.display(thisWeek, metric: metric))) \(WeightUnit.label(metric: metric))",
+                     detail: volumeDetail(thisWeek: thisWeek, lastWeek: lastWeek),
+                     progress: lastWeek > 0 ? thisWeek / lastWeek : (thisWeek > 0 ? 1 : 0))
+                stat(title: "Time",
+                     value: Format.minutes(store.minutesThisWeek * 60),
+                     detail: "of \(Int(targetMinutes)) min goal",
+                     progress: targetMinutes > 0 ? store.minutesThisWeek / targetMinutes : 0)
+            }
+        }
+        .cardStyle(padding: 16, radius: 26)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func stat(title: String, value: String, detail: String, progress: Double) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Theme.textSecondary)
+            Text(value)
+                .font(.system(size: 20, weight: .semibold).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            ProgressBar(value: min(progress, 1), height: 4)
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(Theme.textTertiary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func volumeDetail(thisWeek: Double, lastWeek: Double) -> String {
+        guard lastWeek > 0 else { return thisWeek > 0 ? "first week tracked" : "no lifting yet" }
+        let change = Int(((thisWeek / lastWeek) - 1) * 100)
+        return change >= 0 ? "+\(change)% vs last week" : "\(change)% vs last week"
+    }
+}
+
+// MARK: - Nutrition
+
+/// Today's calories and protein, with a shortcut to snap a meal.
+private struct NutritionHomeCard: View {
+    @Environment(AppStore.self) private var store
+
+    var body: some View {
+        let totals = NutritionTotals(meals: store.meals(on: Date()))
+        let targets = store.nutritionTargets
+        HStack(spacing: 12) {
+            NavigationLink {
+                NutritionView()
+            } label: {
+                HStack(spacing: 14) {
+                    RingView(progress: Double(totals.calories) / Double(max(targets.calories, 1)),
+                             color: Theme.sage, lineWidth: 5, size: 46)
+                        .overlay(Image(systemName: "fork.knife").font(.system(size: 13, weight: .semibold)))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Today's fuel")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Theme.textSecondary)
+                        Text("\(totals.calories) / \(targets.calories) kcal")
+                            .font(.system(size: 17, weight: .semibold).monospacedDigit())
+                        Text("\(Int(totals.proteinG)) / \(targets.proteinG) g protein")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Nutrition, \(totals.calories) of \(targets.calories) calories today")
+
+            NavigationLink {
+                NutritionView(startWith: .snap)
+            } label: {
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 46, height: 46)
+                    .background(Circle().fill(Theme.sage))
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Snap a meal")
+        }
+        .cardStyle(padding: 14, radius: 26)
+    }
+}
+
+// MARK: - Shared rows
 
 /// Pastel card for one training day ("Triceps Bench Dips" style).
 struct DayCard: View {
     let day: WorkoutDay
     let index: Int
     let color: Color
+    var isNext = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            InkTag(text: "Day \(index + 1)")
+            InkTag(text: isNext ? "Up next" : "Day \(index + 1)", symbol: isNext ? "arrow.right" : nil)
             Text(day.name)
                 .font(.system(size: 20, weight: .medium))
                 .italic()
@@ -265,172 +470,6 @@ struct DayCard: View {
                 .offset(x: 14, y: 26)
         }
         .pastelCard(color)
-    }
-}
-
-// MARK: - Weekly summary
-
-private struct WeekSummaryCards: View {
-    @Environment(AppStore.self) private var store
-
-    private let dayLetters = ["M", "T", "W", "T", "F", "S", "S"]
-
-    var body: some View {
-        let metric = store.profile.useMetric
-        let daily = store.dailyVolumeThisWeek
-        let maxDaily = max(daily.max() ?? 0, 1)
-        let lastWeek = store.volumeLastWeekKg
-        let thisWeek = store.volumeThisWeekKg
-        let volumeProgress = lastWeek > 0 ? thisWeek / lastWeek : (thisWeek > 0 ? 1 : 0)
-        let targetMinutes = Double(store.profile.daysPerWeek * store.profile.sessionMinutes)
-        let minutes = store.minutesThisWeek
-        let trained = store.trainedDaysThisWeek
-        VStack(spacing: 12) {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Workouts", systemImage: "figure.strengthtraining.traditional")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Theme.textSecondary)
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text("\(store.workoutsThisWeek)")
-                            .font(.system(size: 34, weight: .semibold).monospacedDigit())
-                        Text("/ \(store.profile.daysPerWeek) this week")
-                            .font(.footnote)
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                }
-                Spacer()
-                HStack(alignment: .bottom, spacing: 6) {
-                    ForEach(0..<7, id: \.self) { i in
-                        VStack(spacing: 5) {
-                            Capsule()
-                                .fill(trained.contains(i) ? Color.white : Color.white.opacity(0.12))
-                                .frame(width: 7, height: trained.contains(i) ? max(14, 46 * daily[i] / maxDaily) : 8)
-                            Text(dayLetters[i])
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundStyle(i == store.todayIndex ? Color.white : Theme.textTertiary)
-                        }
-                    }
-                }
-                .frame(height: 64, alignment: .bottom)
-            }
-            .cardStyle(padding: 16, radius: 24)
-
-            HStack(spacing: 12) {
-                RingStatCard(title: "Volume",
-                             value: Format.compact(WeightUnit.display(thisWeek, metric: metric)),
-                             unit: "\(WeightUnit.label(metric: metric)) this week",
-                             progress: volumeProgress, color: Theme.orange)
-                RingStatCard(title: "Time",
-                             value: Format.minutes(minutes * 60),
-                             unit: "of \(Int(targetMinutes)) min goal",
-                             progress: targetMinutes > 0 ? minutes / targetMinutes : 0, color: Theme.blue)
-            }
-        }
-    }
-}
-
-private struct RingStatCard: View {
-    let title: String
-    let value: String
-    let unit: String
-    let progress: Double
-    let color: Color
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(Theme.textSecondary)
-                Text(value)
-                    .font(.system(size: 22, weight: .semibold).monospacedDigit())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                Text(unit)
-                    .font(.caption2)
-                    .foregroundStyle(Theme.textTertiary)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 4)
-            RingView(progress: progress, color: color, lineWidth: 5, size: 40)
-        }
-        .cardStyle(padding: 14, radius: 22)
-    }
-}
-
-// MARK: - Up next
-
-/// Photo card showing the next workout from the active plan.
-struct UpNextCard: View {
-    @Environment(AppStore.self) private var store
-    @State private var showGenerator = false
-
-    var body: some View {
-        if let plan = store.activePlan, let day = plan.nextDay {
-            ZStack(alignment: .bottomLeading) {
-                PhotoBackdrop(name: "WorkoutLift", gradientStart: 0.05)
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Up next · Day \(min(plan.nextDayIndex, plan.days.count - 1) + 1) of \(plan.days.count)")
-                            .font(.caption.weight(.medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(.ultraThinMaterial, in: Capsule())
-                        Spacer()
-                        Menu {
-                            ForEach(Array(plan.days.enumerated()), id: \.element.id) { index, d in
-                                Button(d.name) { store.setNextDay(planID: plan.id, index: index) }
-                            }
-                        } label: {
-                            Image(systemName: "arrow.left.arrow.right")
-                                .font(.system(size: 13, weight: .semibold))
-                                .frame(width: 34, height: 34)
-                                .background(.ultraThinMaterial, in: Circle())
-                        }
-                        .accessibilityLabel("Change day")
-                    }
-                    Spacer()
-                    Text(day.name)
-                        .font(.system(size: 30, weight: .semibold))
-                    Text(day.focus)
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.7))
-                        .lineLimit(1)
-                    HStack(spacing: 12) {
-                        Label("\(day.exercises.count) exercises", systemImage: "list.bullet")
-                        Label("~\(day.estimatedMinutes) min", systemImage: "clock")
-                    }
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .padding(.bottom, 6)
-                    Button {
-                        if store.activeSession != nil {
-                            store.isWorkoutPresented = true
-                        } else {
-                            store.startWorkout(day: day, plan: plan)
-                        }
-                        Haptics.medium()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: store.activeSession == nil ? "play.fill" : "arrow.uturn.forward")
-                            Text(store.activeSession == nil ? "Start Workout" : "Resume Workout")
-                        }
-                    }
-                    .buttonStyle(PrimaryButtonStyle())
-                }
-                .foregroundStyle(.white)
-                .padding(18)
-            }
-            .frame(height: 330)
-            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).strokeBorder(Theme.stroke))
-        } else {
-            EmptyStateView(symbol: "list.bullet.clipboard", title: "No active plan",
-                           message: "Generate a plan for your goal and equipment, or build your own.",
-                           actionTitle: "Create a plan") { showGenerator = true }
-                .sheet(isPresented: $showGenerator) { GeneratePlanView().environment(store) }
-        }
     }
 }
 
@@ -488,54 +527,5 @@ struct CompactLabelStyle: LabelStyle {
             configuration.icon
             configuration.title
         }
-    }
-}
-
-// MARK: - Nutrition
-
-/// Today's calories and protein, with a shortcut to snap a meal.
-private struct NutritionHomeCard: View {
-    @Environment(AppStore.self) private var store
-
-    var body: some View {
-        let totals = NutritionTotals(meals: store.meals(on: Date()))
-        let targets = store.nutritionTargets
-        HStack(spacing: 12) {
-            NavigationLink {
-                NutritionView()
-            } label: {
-                HStack(spacing: 14) {
-                    RingView(progress: Double(totals.calories) / Double(max(targets.calories, 1)),
-                             color: Theme.sage, lineWidth: 6, size: 50)
-                        .overlay(Image(systemName: "fork.knife").font(.system(size: 14, weight: .semibold)))
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Today's fuel")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(Theme.textSecondary)
-                        Text("\(totals.calories) / \(targets.calories) kcal")
-                            .font(.system(size: 17, weight: .semibold).monospacedDigit())
-                        Text("\(Int(totals.proteinG)) / \(targets.proteinG) g protein")
-                            .font(.caption)
-                            .foregroundStyle(Theme.textTertiary)
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityLabel("Nutrition, \(totals.calories) of \(targets.calories) calories today")
-
-            NavigationLink {
-                NutritionView(startWith: .snap)
-            } label: {
-                Image(systemName: "camera.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 50, height: 50)
-                    .background(Circle().fill(Theme.sage))
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityLabel("Snap a meal")
-        }
-        .cardStyle(padding: 14, radius: 24)
     }
 }

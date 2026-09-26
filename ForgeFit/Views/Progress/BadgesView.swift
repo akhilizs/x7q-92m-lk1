@@ -81,7 +81,7 @@ struct BadgesSection: View {
 
 struct BadgesView: View {
     @Environment(AppStore.self) private var store
-    private let columns = [GridItem(.adaptive(minimum: 100), spacing: 14)]
+    private let columns = [GridItem(.adaptive(minimum: 100), spacing: 14, alignment: .top)]
 
     var body: some View {
         let statuses = store.badgeStatuses
@@ -92,7 +92,7 @@ struct BadgesView: View {
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(Theme.ink)
                         .frame(width: 52, height: 52)
-                        .background(Circle().fill(Theme.orange))
+                        .background(Circle().fill(Theme.sand))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(store.weekStreak == 1 ? "1-week streak" : "\(store.weekStreak)-week streak")
                             .font(.system(size: 20, weight: .semibold))

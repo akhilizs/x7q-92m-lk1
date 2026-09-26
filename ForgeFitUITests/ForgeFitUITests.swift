@@ -83,6 +83,10 @@ final class ForgeFitUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Great work!"].waitForExistence(timeout: 5))
         snap("07-finish-workout")
         tapButton(containing: "Save workout")
+        // The celebration summary slides up after saving.
+        XCTAssertTrue(text(containing: "WORKOUT SAVED").waitForExistence(timeout: 8))
+        snap("07b-workout-summary")
+        tap(app.buttons["Done"])
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
         snap("08-home-after-workout")
 
@@ -260,6 +264,8 @@ final class ForgeFitUITests: XCTestCase {
 
         // Nutrition: add a meal by hand.
         app.buttons["Home"].tap()
+        XCTAssertTrue(text(containing: "This week").waitForExistence(timeout: 5))
+        app.swipeUp()   // bring the nutrition card clear of the floating tab bar
         tapButton(containing: "calories today")
         XCTAssertTrue(app.navigationBars["Nutrition"].waitForExistence(timeout: 5))
         snap("60-nutrition")
