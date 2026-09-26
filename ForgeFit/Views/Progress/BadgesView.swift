@@ -81,7 +81,7 @@ struct BadgesSection: View {
 
 struct BadgesView: View {
     @Environment(AppStore.self) private var store
-    private let columns = [GridItem(.adaptive(minimum: 100), spacing: 14)]
+    private let columns = [GridItem(.adaptive(minimum: 100), spacing: 14, alignment: .top)]
 
     var body: some View {
         let statuses = store.badgeStatuses
