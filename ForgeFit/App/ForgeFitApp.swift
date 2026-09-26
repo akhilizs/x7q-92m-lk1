@@ -4,9 +4,16 @@ import Combine
 
 @main
 struct ForgeFitApp: App {
-    @State private var store = AppStore()
+    @State private var store: AppStore
+    @State private var sync: CloudSync
 
     init() {
+        let store = AppStore()
+        let sync = CloudSync()
+        sync.attach(store)
+        _store = State(initialValue: store)
+        _sync = State(initialValue: sync)
+
         let nav = UINavigationBarAppearance()
         nav.configureWithTransparentBackground()
         nav.backgroundColor = .black
@@ -21,6 +28,7 @@ struct ForgeFitApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
+                .environment(sync)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
         }
@@ -53,6 +61,7 @@ enum AppTab: Hashable, CaseIterable {
 
 struct RootView: View {
     @Environment(AppStore.self) private var store
+    @Environment(CloudSync.self) private var sync
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -66,9 +75,67 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: store.hasOnboarded)
+        .onAppear { TapOutsideToDismissKeyboard.shared.install() }
+        .task { await sync.sync() }
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active { store.saveNow() }
+            switch phase {
+            case .active:
+                TapOutsideToDismissKeyboard.shared.install()
+                RestLiveActivity.endFinished()
+                Reminders.reschedule(for: store)
+                Task { await sync.sync() }
+            case .background:
+                store.saveNow()
+                uploadBeforeSuspending()
+            default:
+                store.saveNow()
+            }
         }
+        .onOpenURL { url in
+            Task { await sync.handleCallback(url) }
+        }
+        .sheet(isPresented: Binding(get: { sync.isResettingPassword },
+                                    set: { if !$0 { sync.isResettingPassword = false } })) {
+            NavigationStack { SetPasswordView() }
+                .environment(sync)
+        }
+        .sheet(isPresented: Binding(get: { sync.conflict != nil }, set: { _ in })) {
+            if let conflict = sync.conflict {
+                ConflictChoiceView(conflict: conflict, localWorkouts: store.sessions.count) { choice in
+                    Task { await sync.resolveConflict(choice) }
+                }
+                .appBackground()
+                .interactiveDismissDisabled()
+            }
+        }
+        .alert(sync.notice ?? "", isPresented: Binding(get: { sync.notice != nil },
+                                                       set: { if !$0 { sync.notice = nil } })) {
+            Button("OK") { sync.notice = nil }
+        }
+    }
+
+    /// Gives pending changes a chance to reach the account before iOS suspends the app.
+    private func uploadBeforeSuspending() {
+        guard sync.isSignedIn, sync.hasLocalChanges else { return }
+        let backgroundTask = BackgroundTask()
+        backgroundTask.id = UIApplication.shared.beginBackgroundTask(withName: "Save progress") {
+            backgroundTask.end()
+        }
+        Task {
+            await sync.sync()
+            backgroundTask.end()
+        }
+    }
+}
+
+@MainActor
+private final class BackgroundTask {
+    var id = UIBackgroundTaskIdentifier.invalid
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
     }
 }
 
@@ -118,6 +185,10 @@ struct MainTabView: View {
         }
         .fullScreenCover(isPresented: $store.isWorkoutPresented) {
             ActiveWorkoutView()
+                .environment(store)
+        }
+        .sheet(item: $store.completedWorkout) { completed in
+            WorkoutSummaryView(completed: completed)
                 .environment(store)
         }
     }

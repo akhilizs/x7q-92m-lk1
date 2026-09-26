@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppStore.self) private var store
+    @Environment(CoachViewModel.self) private var coach
     @Binding var selection: AppTab
     @State private var showGenerator = false
     @State private var showBuilder = false
@@ -11,8 +12,12 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     header
+                    if store.isCheckInDue && store.hasAPIKey {
+                        checkInCard
+                    }
                     WeekSummaryCards()
                     UpNextCard()
+                    NutritionHomeCard()
                     planDays
                     coachCard
                     quickActions
@@ -40,6 +45,12 @@ struct HomeView: View {
                 Text(store.profile.firstName.isEmpty ? "Hi there" : "Hi, \(store.profile.firstName)")
                     .font(.system(size: 26, weight: .medium))
                     .lineLimit(1)
+                if store.weekStreak > 0 {
+                    Label(store.weekStreak == 1 ? "1-week streak" : "\(store.weekStreak)-week streak", systemImage: "flame.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.orange)
+                        .padding(.top, 2)
+                }
             }
             Spacer()
             Button {
@@ -95,6 +106,40 @@ struct HomeView: View {
                 .padding(.horizontal, -20)
             }
         }
+    }
+
+    // MARK: Weekly check-in
+
+    private var checkInCard: some View {
+        Button {
+            selection = .coach
+            coach.startWeeklyCheckIn(store: store)
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "checklist")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 46, height: 46)
+                    .background(Circle().fill(Color.white.opacity(0.6)))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Weekly check-in ready")
+                        .font(.system(size: 17, weight: .semibold))
+                    Text("Your coach reviews your week and fine-tunes the plan.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "arrow.right")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.sky))
+        }
+        .buttonStyle(PressableStyle())
+        .disabled(coach.isResponding)
+        .accessibilityLabel("Start weekly check-in")
     }
 
     // MARK: Coach
@@ -443,5 +488,54 @@ struct CompactLabelStyle: LabelStyle {
             configuration.icon
             configuration.title
         }
+    }
+}
+
+// MARK: - Nutrition
+
+/// Today's calories and protein, with a shortcut to snap a meal.
+private struct NutritionHomeCard: View {
+    @Environment(AppStore.self) private var store
+
+    var body: some View {
+        let totals = NutritionTotals(meals: store.meals(on: Date()))
+        let targets = store.nutritionTargets
+        HStack(spacing: 12) {
+            NavigationLink {
+                NutritionView()
+            } label: {
+                HStack(spacing: 14) {
+                    RingView(progress: Double(totals.calories) / Double(max(targets.calories, 1)),
+                             color: Theme.sage, lineWidth: 6, size: 50)
+                        .overlay(Image(systemName: "fork.knife").font(.system(size: 14, weight: .semibold)))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Today's fuel")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Theme.textSecondary)
+                        Text("\(totals.calories) / \(targets.calories) kcal")
+                            .font(.system(size: 17, weight: .semibold).monospacedDigit())
+                        Text("\(Int(totals.proteinG)) / \(targets.proteinG) g protein")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Nutrition, \(totals.calories) of \(targets.calories) calories today")
+
+            NavigationLink {
+                NutritionView(startWith: .snap)
+            } label: {
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 50, height: 50)
+                    .background(Circle().fill(Theme.sage))
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Snap a meal")
+        }
+        .cardStyle(padding: 14, radius: 24)
     }
 }

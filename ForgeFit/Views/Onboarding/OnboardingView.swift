@@ -2,6 +2,8 @@ import SwiftUI
 
 struct OnboardingView: View {
     @Environment(AppStore.self) private var store
+    @Environment(CloudSync.self) private var sync
+    @State private var showLogIn = false
 
     private enum Step: Int, CaseIterable {
         case welcome, name, gender, age, height, weight, goal, level, activities, schedule, equipment, notes, building
@@ -42,6 +44,11 @@ struct OnboardingView: View {
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.88), value: step)
+        .sheet(isPresented: $showLogIn) {
+            NavigationStack { AuthView(mode: .logIn) }
+                .environment(store)
+                .environment(sync)
+        }
     }
 
     // MARK: Welcome
@@ -82,11 +89,18 @@ struct OnboardingView: View {
                     }
                 }
                 .buttonStyle(GlassButtonStyle())
-                Button("Skip for now") { skip() }
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.6))
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 14)
+                HStack(spacing: 18) {
+                    Button("Skip for now") { skip() }
+                    if sync.isConfigured && !sync.isSignedIn {
+                        Text("·").foregroundStyle(.white.opacity(0.3))
+                        Button("I have an account") { showLogIn = true }
+                            .foregroundStyle(.white)
+                    }
+                }
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.6))
+                .frame(maxWidth: .infinity)
+                .padding(.top, 14)
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 24)

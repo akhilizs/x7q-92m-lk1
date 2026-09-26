@@ -39,6 +39,8 @@ struct PlannedExercise: Identifiable, Codable, Hashable {
     var repsHigh: Int
     var restSeconds: Int
     var notes: String = ""
+    /// Exercises sharing a group are done back to back as a superset.
+    var supersetGroup: UUID? = nil
 
     var exercise: Exercise? { ExerciseLibrary.exercise(exerciseID) }
     var name: String { ExerciseLibrary.name(for: exerciseID) }

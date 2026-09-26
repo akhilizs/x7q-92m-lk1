@@ -30,8 +30,16 @@ jobs:
         run: xcodegen generate
 
       - name: Build app (Release, unsigned)
+        env:
+          # Optional repository variables (Settings -> Secrets and variables -> Actions) that
+          # point the build at a different Supabase project than the one in project.yml.
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ vars.SUPABASE_KEY }}
         run: |
           set -o pipefail
+          overrides=()
+          if [ -n "$SUPABASE_URL" ]; then overrides+=("SUPABASE_URL=$SUPABASE_URL"); fi
+          if [ -n "$SUPABASE_KEY" ]; then overrides+=("SUPABASE_KEY=$SUPABASE_KEY"); fi
           xcodebuild \
             -project ForgeFit.xcodeproj \
             -scheme ForgeFit \
@@ -42,8 +50,10 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            ${overrides[@]+"${overrides[@]}"} \
             build | tee xcodebuild.log | grep -E "error:|warning: .*(deprecated|will be an error)|BUILD (SUCCEEDED|FAILED)" || true
           test -d build/Build/Products/Release-iphoneos/ForgeFit.app
+          echo "Accounts project: $(/usr/libexec/PlistBuddy -c 'Print :SupabaseURL' build/Build/Products/Release-iphoneos/ForgeFit.app/Info.plist || echo none)"
 
       - name: Show compiler errors
         if: failure()

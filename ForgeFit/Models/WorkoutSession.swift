@@ -1,5 +1,38 @@
 import Foundation
 
+/// What a set is for. Warm-ups don't count toward volume, records or suggestions.
+enum SetKind: String, Codable, CaseIterable, Hashable {
+    case normal, warmup, drop, failure
+
+    var title: String {
+        switch self {
+        case .normal: return "Working set"
+        case .warmup: return "Warm-up"
+        case .drop: return "Drop set"
+        case .failure: return "To failure"
+        }
+    }
+
+    /// Letter shown instead of the set number.
+    var badge: String? {
+        switch self {
+        case .normal: return nil
+        case .warmup: return "W"
+        case .drop: return "D"
+        case .failure: return "F"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .normal: return "circle"
+        case .warmup: return "flame"
+        case .drop: return "arrow.down.right"
+        case .failure: return "bolt.fill"
+        }
+    }
+}
+
 struct LoggedSet: Identifiable, Codable, Hashable {
     var id = UUID()
     /// Always stored in kilograms.
@@ -7,6 +40,34 @@ struct LoggedSet: Identifiable, Codable, Hashable {
     var reps: Int = 0
     var seconds: Int = 0
     var completed: Bool = false
+    var kind: SetKind = .normal
+    /// Rate of perceived exertion (6–10, in halves), if the athlete logged it.
+    var rpe: Double? = nil
+
+    var isWarmup: Bool { kind == .warmup }
+
+    init(id: UUID = UUID(), weightKg: Double = 0, reps: Int = 0, seconds: Int = 0, completed: Bool = false,
+         kind: SetKind = .normal, rpe: Double? = nil) {
+        self.id = id
+        self.weightKg = weightKg
+        self.reps = reps
+        self.seconds = seconds
+        self.completed = completed
+        self.kind = kind
+        self.rpe = rpe
+    }
+
+    /// Tolerant decoding so sets saved by older versions keep loading.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        weightKg = try c.decodeIfPresent(Double.self, forKey: .weightKg) ?? 0
+        reps = try c.decodeIfPresent(Int.self, forKey: .reps) ?? 0
+        seconds = try c.decodeIfPresent(Int.self, forKey: .seconds) ?? 0
+        completed = try c.decodeIfPresent(Bool.self, forKey: .completed) ?? false
+        kind = (try? c.decodeIfPresent(SetKind.self, forKey: .kind)) ?? .normal
+        rpe = try c.decodeIfPresent(Double.self, forKey: .rpe)
+    }
 }
 
 struct LoggedExercise: Identifiable, Codable, Hashable {
@@ -17,12 +78,17 @@ struct LoggedExercise: Identifiable, Codable, Hashable {
     var restSeconds: Int
     var notes: String = ""
     var sets: [LoggedSet]
+    /// Exercises sharing a group are done back to back as a superset.
+    var supersetGroup: UUID? = nil
 
     var exercise: Exercise? { ExerciseLibrary.exercise(exerciseID) }
     var name: String { ExerciseLibrary.name(for: exerciseID) }
     var tracking: TrackingType { exercise?.tracking ?? .weightReps }
 
-    var completedSets: [LoggedSet] { sets.filter(\.completed) }
+    /// Sets that count (warm-ups excluded).
+    var workingSets: [LoggedSet] { sets.filter { !$0.isWarmup } }
+    /// Completed working sets: what volume, records and suggestions are based on.
+    var completedSets: [LoggedSet] { sets.filter { $0.completed && !$0.isWarmup } }
 
     var volumeKg: Double {
         completedSets.reduce(0) { $0 + $1.weightKg * Double($1.reps) }
@@ -40,7 +106,7 @@ struct LoggedExercise: Identifiable, Codable, Hashable {
     }
 
     init(id: UUID = UUID(), exerciseID: String, targetRepsLow: Int, targetRepsHigh: Int,
-         restSeconds: Int, notes: String = "", sets: [LoggedSet]) {
+         restSeconds: Int, notes: String = "", sets: [LoggedSet], supersetGroup: UUID? = nil) {
         self.id = id
         self.exerciseID = exerciseID
         self.targetRepsLow = targetRepsLow
@@ -48,28 +114,32 @@ struct LoggedExercise: Identifiable, Codable, Hashable {
         self.restSeconds = restSeconds
         self.notes = notes
         self.sets = sets
+        self.supersetGroup = supersetGroup
     }
 
-    init(planned: PlannedExercise, previous: [LoggedSet]) {
+    /// Prefills today's sets from the progression suggestion when there is one,
+    /// otherwise from last time's numbers.
+    init(planned: PlannedExercise, previous: [LoggedSet], suggestion: OverloadSuggestion? = nil) {
         let tracking = planned.exercise?.tracking ?? .weightReps
+        let previous = previous.filter { $0.kind != .drop }
         var sets: [LoggedSet] = []
         for i in 0..<max(planned.sets, 1) {
             let prev = i < previous.count ? previous[i] : previous.last
             var set = LoggedSet()
             switch tracking {
             case .weightReps:
-                set.weightKg = prev?.weightKg ?? 0
-                set.reps = prev?.reps ?? planned.repsHigh
+                set.weightKg = suggestion?.weightKg ?? prev?.weightKg ?? 0
+                set.reps = suggestion?.reps ?? prev?.reps ?? planned.repsHigh
             case .reps:
-                set.reps = prev?.reps ?? planned.repsHigh
+                set.reps = suggestion?.reps ?? prev?.reps ?? planned.repsHigh
             case .time:
-                set.seconds = prev?.seconds ?? planned.repsHigh
+                set.seconds = suggestion?.seconds ?? prev?.seconds ?? planned.repsHigh
             }
             sets.append(set)
         }
         self.init(exerciseID: planned.exerciseID, targetRepsLow: planned.repsLow,
                   targetRepsHigh: planned.repsHigh, restSeconds: planned.restSeconds,
-                  notes: planned.notes, sets: sets)
+                  notes: planned.notes, sets: sets, supersetGroup: planned.supersetGroup)
     }
 }
 
@@ -91,7 +161,7 @@ struct WorkoutSession: Identifiable, Codable, Hashable {
 
     var totalVolumeKg: Double { exercises.reduce(0) { $0 + $1.volumeKg } }
     var completedSetCount: Int { exercises.reduce(0) { $0 + $1.completedSets.count } }
-    var totalSetCount: Int { exercises.reduce(0) { $0 + $1.sets.count } }
+    var totalSetCount: Int { exercises.reduce(0) { $0 + $1.workingSets.count } }
 
     var progress: Double {
         totalSetCount == 0 ? 0 : Double(completedSetCount) / Double(totalSetCount)
@@ -114,9 +184,10 @@ struct WorkoutSession: Identifiable, Codable, Hashable {
         if let effort { line += ", effort \(effort)/10" }
         let tops = exercises.compactMap { ex -> String? in
             guard let best = ex.completedSets.max(by: { $0.weightKg * Double($0.reps) < $1.weightKg * Double($1.reps) }) else { return nil }
+            let rpe = best.rpe.map { " @RPE\(String(format: "%g", $0))" } ?? ""
             switch ex.tracking {
             case .weightReps:
-                return "\(ex.exerciseID) \(WeightUnit.format(best.weightKg, metric: metric))\(unit)x\(best.reps)"
+                return "\(ex.exerciseID) \(WeightUnit.format(best.weightKg, metric: metric))\(unit)x\(best.reps)\(rpe)"
             case .reps:
                 return "\(ex.exerciseID) x\(best.reps)"
             case .time:

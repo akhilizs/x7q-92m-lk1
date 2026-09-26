@@ -12,6 +12,11 @@ settings:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    # Accounts & cloud save (see README). The publishable key is meant to ship in apps:
+    # row level security (supabase/setup.sql) limits every account to its own data.
+    # Never put a secret key (sb_secret_…) here. Empty values = offline only.
+    SUPABASE_URL: https://tfadnmwxuinvcbuanylq.supabase.co
+    SUPABASE_KEY: sb_publishable_e4xnf0YbNYcefKwn9wTSnw_pVMLfSG0
 
 targets:
   ForgeFit:
@@ -19,6 +24,9 @@ targets:
     platform: iOS
     sources:
       - path: ForgeFit
+      - path: Shared
+    dependencies:
+      - target: ForgeFitWidgets
     info:
       path: ForgeFit/Info.plist
       properties:
@@ -34,6 +42,15 @@ targets:
           - UIInterfaceOrientationPortrait
         UIUserInterfaceStyle: Dark
         ITSAppUsesNonExemptEncryption: false
+        NSSupportsLiveActivities: true
+        NSCameraUsageDescription: Take a photo of your meal so the AI coach can estimate its calories and protein.
+        SupabaseURL: $(SUPABASE_URL)
+        SupabaseKey: $(SUPABASE_KEY)
+        # Email confirmation and password-reset links open the app (forgefit://auth-callback).
+        CFBundleURLTypes:
+          - CFBundleURLName: com.forgefit.app.auth
+            CFBundleURLSchemes:
+              - forgefit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.forgefit.app
@@ -42,6 +59,28 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_PREVIEWS: YES
+        CODE_SIGN_STYLE: Automatic
+
+  ForgeFitWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ForgeFitWidgets
+      - path: Shared
+    info:
+      path: ForgeFitWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: ForgeFit
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.forgefit.app.widgets
+        PRODUCT_NAME: ForgeFitWidgets
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
         CODE_SIGN_STYLE: Automatic
 
   ForgeFitUITests:

@@ -50,7 +50,23 @@ final class CoachViewModel {
     can still adapt the plan to train around the problem area.
     """
 
-    func send(_ text: String, store: AppStore) {
+    static let checkInPrompt = """
+    WEEKLY CHECK-IN. Review my last 7 days against my plan: sessions done vs planned, skipped exercises, \
+    effort ratings, lifts that improved or stalled, body weight trend, and nutrition vs my targets if I logged meals. \
+    Reply with a short summary: one or two things that went well, the most important thing to fix, and one focus \
+    for next week. If changing my plan would help (for example a stalled lift, repeated skips, effort too high or \
+    too low), call update_workout_plan with the revised plan; otherwise don't change it.
+    """
+
+    /// Sends the weekly check-in. The chat shows a short label; the coach gets the full brief.
+    func startWeeklyCheckIn(store: AppStore) {
+        send("📋 Weekly check-in", prompt: Self.checkInPrompt, store: store) {
+            store.lastCheckIn = Date()
+        }
+    }
+
+    /// `prompt` replaces `text` in what's sent to the model (the chat still shows `text`).
+    func send(_ text: String, prompt: String? = nil, store: AppStore, onSuccess: (() -> Void)? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isResponding else { return }
 
@@ -63,7 +79,7 @@ final class CoachViewModel {
 
         let historyBefore = store.chatHistory
         var turns = Self.trimmed(historyBefore)
-        turns.append(APITurn(role: "user", content: [["text": trimmed]]))
+        turns.append(APITurn(role: "user", content: [["text": prompt ?? trimmed]]))
 
         isResponding = true
         liveText = ""
@@ -95,6 +111,7 @@ final class CoachViewModel {
                 store.chatMessages.append(ChatMessage(role: .assistant,
                                                       text: reply.isEmpty && result.proposal != nil ? "Here's your updated plan." : reply,
                                                       proposal: result.proposal))
+                onSuccess?()
                 Haptics.success()
             } catch {
                 store.chatHistory = historyBefore

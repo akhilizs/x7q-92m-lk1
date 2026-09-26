@@ -2,8 +2,10 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(AppStore.self) private var store
+    @Environment(CloudSync.self) private var sync
     @State private var confirmReset = false
     @State private var showBody = false
+    @State private var showAuth = false
 
     var body: some View {
         @Bindable var store = store
@@ -12,6 +14,7 @@ struct ProfileView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     header
                     statPills
+                    accountSection
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Your activities")
                             .font(.footnote)
@@ -55,6 +58,15 @@ struct ProfileView: View {
                         Text("Preferences")
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
+                        NavigationLink { RemindersView() } label: {
+                            ActivityRow(symbol: "bell.badge", title: "Reminders", subtitle: reminderSummary)
+                        }
+                        .buttonStyle(PressableStyle())
+                        NavigationLink { NutritionView() } label: {
+                            ActivityRow(symbol: "fork.knife", title: "Nutrition targets",
+                                        subtitle: "\(store.nutritionTargets.calories) kcal · \(store.nutritionTargets.proteinG) g protein")
+                        }
+                        .buttonStyle(PressableStyle())
                         HStack(spacing: 14) {
                             IconBadge(symbol: "ruler", size: 40)
                             Text("Metric units (kg)")
@@ -86,7 +98,7 @@ struct ProfileView: View {
                             .frame(height: 50)
                             .background(Capsule().strokeBorder(Theme.danger.opacity(0.4)))
                     }
-                    Text("ForgeFit \(appVersion) · Your data stays on this device. AI requests go directly from your phone to Google's Gemini API.")
+                    Text("ForgeFit \(appVersion) · \(sync.isSignedIn ? "Your progress is saved to your account." : "Your data stays on this device.") AI requests go directly from your phone to Google's Gemini API.")
                         .font(.caption)
                         .foregroundStyle(Theme.textTertiary)
                         .frame(maxWidth: .infinity)
@@ -103,14 +115,60 @@ struct ProfileView: View {
                     .environment(store)
                     .presentationDetents([.medium, .large])
             }
+            .sheet(isPresented: $showAuth) {
+                NavigationStack { AuthView(mode: .signUp) }
+                    .environment(store)
+                    .environment(sync)
+            }
             .confirmationDialog("Reset everything?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Delete all data", role: .destructive) {
                     store.resetAll()
                 }
             } message: {
-                Text("Plans, workouts, body weight and chat history will be permanently deleted.")
+                Text(sync.isSignedIn
+                     ? "Plans, workouts, body weight and chat history will be permanently deleted, including the copy saved in your account."
+                     : "Plans, workouts, body weight and chat history will be permanently deleted.")
             }
         }
+    }
+
+    @ViewBuilder
+    private var accountSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Account")
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+            if !sync.isConfigured {
+                ActivityRow(symbol: "icloud.slash", title: "Accounts aren't set up",
+                            subtitle: "This build has no Supabase project (see README)", showsChevron: false)
+            } else if sync.isSignedIn {
+                NavigationLink { AccountView() } label: {
+                    TimelineView(.periodic(from: .now, by: 30)) { _ in
+                        ActivityRow(symbol: "checkmark.icloud", title: sync.session?.email ?? "Account",
+                                    subtitle: sync.status.text)
+                    }
+                }
+                .buttonStyle(PressableStyle())
+            } else {
+                Button {
+                    showAuth = true
+                } label: {
+                    ActivityRow(symbol: "icloud.and.arrow.up", title: "Save your progress",
+                                subtitle: "Create an account or log in")
+                }
+                .buttonStyle(PressableStyle())
+            }
+        }
+    }
+
+    private var reminderSummary: String {
+        let settings = ReminderSettings.load()
+        guard settings.workoutsEnabled else { return settings.checkInEnabled ? "Weekly check-in only" : "Off" }
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        let time = Calendar.current.date(bySettingHour: settings.hour, minute: settings.minute, second: 0, of: Date())
+            .map { formatter.string(from: $0) } ?? ""
+        return "\(settings.weekdays.count) days a week · \(time)"
     }
 
     private var appVersion: String {
@@ -188,6 +246,7 @@ private struct ActivityRow: View {
     let symbol: String
     let title: String
     let subtitle: String
+    var showsChevron = true
 
     var body: some View {
         HStack(spacing: 14) {
@@ -202,9 +261,11 @@ private struct ActivityRow: View {
                     .lineLimit(1)
             }
             Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.textTertiary)
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textTertiary)
+            }
         }
         .cardStyle(padding: 12, radius: 22)
     }

@@ -134,6 +134,9 @@ struct UserProfile: Codable, Equatable {
     var notes: String = ""
     var gender: Gender? = nil
     var activities: [String] = []
+    /// Custom daily targets; nil means "work it out from my profile".
+    var calorieTarget: Int? = nil
+    var proteinTarget: Int? = nil
 
     init() {}
 
@@ -154,6 +157,8 @@ struct UserProfile: Codable, Equatable {
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? defaults.notes
         gender = try c.decodeIfPresent(Gender.self, forKey: .gender)
         activities = try c.decodeIfPresent([String].self, forKey: .activities) ?? []
+        calorieTarget = try c.decodeIfPresent(Int.self, forKey: .calorieTarget)
+        proteinTarget = try c.decodeIfPresent(Int.self, forKey: .proteinTarget)
     }
 
     var firstName: String {

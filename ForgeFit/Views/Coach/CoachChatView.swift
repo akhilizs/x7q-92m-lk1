@@ -35,7 +35,7 @@ struct CoachChatView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
                     }
-                    .scrollDismissesKeyboard(.interactively)
+                    .scrollDismissesKeyboard(.immediately)
                     .onChange(of: store.chatMessages.count) { _, _ in
                         withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("bottom", anchor: .bottom) }
                     }
@@ -155,9 +155,25 @@ struct CoachChatView: View {
 
     private var inputBar: some View {
         HStack(alignment: .bottom, spacing: 10) {
+            if inputFocused {
+                Button {
+                    inputFocused = false
+                } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(.white)
+                        .frame(width: 46, height: 46)
+                        .background(Circle().fill(Theme.surfaceRaised))
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel("Hide keyboard")
+                .transition(.scale.combined(with: .opacity))
+            }
+
             TextField(store.hasAPIKey ? "Tell your coach how it's going…" : "Add an API key to chat", text: $input, axis: .vertical)
                 .lineLimit(1...5)
                 .focused($inputFocused)
+                .accessibilityIdentifier("coachInput")
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.surface))
@@ -196,6 +212,7 @@ struct CoachChatView: View {
         .padding(.top, 8)
         .padding(.bottom, 10)
         .background(Theme.background.opacity(0.85))
+        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: inputFocused)
     }
 
     private var canSend: Bool {
@@ -209,6 +226,8 @@ struct CoachChatView: View {
         }
         model.send(text, store: store)
         input = ""
+        // Give the reply the whole screen; tap the field to keep typing.
+        inputFocused = false
     }
 
     private func apply(messageID: UUID) {

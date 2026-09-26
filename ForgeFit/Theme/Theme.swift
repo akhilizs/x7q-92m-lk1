@@ -295,3 +295,43 @@ enum Format {
 func dismissKeyboard() {
     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 }
+
+/// Closes the keyboard when the user taps anywhere outside a text field, on every
+/// screen (sheets included). Taps still reach buttons and scroll views as usual.
+@MainActor
+final class TapOutsideToDismissKeyboard: NSObject, UIGestureRecognizerDelegate {
+    static let shared = TapOutsideToDismissKeyboard()
+    private weak var window: UIWindow?
+
+    func install() {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+        guard let target = windows.first(where: \.isKeyWindow) ?? windows.first,
+              target !== window else { return }
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        tap.cancelsTouchesInView = false
+        tap.delegate = self
+        target.addGestureRecognizer(tap)
+        window = target
+    }
+
+    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        gesture.view?.endEditing(true)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        // Tapping into (another) text field keeps the keyboard up.
+        var view = touch.view
+        while let current = view {
+            if current is UITextField || current is UITextView { return false }
+            view = current.superview
+        }
+        return true
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        true
+    }
+}

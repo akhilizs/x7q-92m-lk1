@@ -16,15 +16,23 @@ final class AppStore {
     var chatMessages: [ChatMessage] { didSet { scheduleSave() } }
     var chatHistory: [APITurn] { didSet { scheduleSave() } }
     var aiModel: AIModel { didSet { scheduleSave() } }
+    var meals: [MealEntry] { didSet { scheduleSave() } }
+    /// When the coach last ran a weekly check-in.
+    var lastCheckIn: Date? { didSet { scheduleSave() } }
 
     /// UI state (not persisted)
     var isWorkoutPresented = false
+    /// Summary shown after a workout is saved (records, new badges, share card).
+    var completedWorkout: CompletedWorkout?
     var hasAPIKey: Bool = KeychainStore.apiKey != nil
 
+    /// Called whenever persisted data changes (used by cloud sync).
+    @ObservationIgnored var onChange: (() -> Void)?
     @ObservationIgnored private var saveWorkItem: DispatchWorkItem?
     private let fileURL: URL
 
-    private struct Snapshot: Codable {
+    /// Everything the app persists, as saved to disk and to the user's account.
+    struct Snapshot: Codable {
         var hasOnboarded: Bool
         var profile: UserProfile
         var plans: [WorkoutPlan]
@@ -36,6 +44,8 @@ final class AppStore {
         var chatHistory: [APITurn]
         /// Stored as a raw string so unknown/older model IDs don't break loading.
         var aiModel: String?
+        var meals: [MealEntry]? = nil
+        var lastCheckIn: Date? = nil
     }
 
     init() {
@@ -58,10 +68,10 @@ final class AppStore {
         bodyWeights = snapshot?.bodyWeights ?? []
         activeSession = snapshot?.activeSession
         chatMessages = snapshot?.chatMessages ?? []
-        // History from the earlier Claude-based coach can't be replayed to Gemini.
-        let savedHistory = snapshot?.chatHistory ?? []
-        chatHistory = savedHistory.contains { $0.role == "assistant" } ? [] : savedHistory
+        chatHistory = Self.replayableHistory(snapshot?.chatHistory ?? [])
         aiModel = snapshot?.aiModel.flatMap(AIModel.init(rawValue:)) ?? .flash
+        meals = snapshot?.meals ?? []
+        lastCheckIn = snapshot?.lastCheckIn
 
         if arguments.contains("-uiTestDemoHistory") {
             DemoData.seed(self)
@@ -69,6 +79,50 @@ final class AppStore {
     }
 
     // MARK: Persistence
+
+    /// History from the earlier Claude-based coach can't be replayed to Gemini.
+    private static func replayableHistory(_ turns: [APITurn]) -> [APITurn] {
+        turns.contains { $0.role == "assistant" } ? [] : turns
+    }
+
+    func makeSnapshot() -> Snapshot {
+        Snapshot(hasOnboarded: hasOnboarded, profile: profile, plans: plans,
+                 activePlanID: activePlanID, sessions: sessions, bodyWeights: bodyWeights,
+                 activeSession: activeSession, chatMessages: chatMessages,
+                 chatHistory: chatHistory, aiModel: aiModel.rawValue,
+                 meals: meals, lastCheckIn: lastCheckIn)
+    }
+
+    /// Replaces everything with `snapshot` (for example progress loaded from the user's account).
+    func apply(_ snapshot: Snapshot) {
+        hasOnboarded = snapshot.hasOnboarded
+        profile = snapshot.profile
+        plans = snapshot.plans
+        activePlanID = snapshot.activePlanID
+        sessions = snapshot.sessions
+        bodyWeights = snapshot.bodyWeights
+        activeSession = snapshot.activeSession
+        if activeSession == nil { isWorkoutPresented = false }
+        chatMessages = snapshot.chatMessages
+        chatHistory = Self.replayableHistory(snapshot.chatHistory)
+        if let model = snapshot.aiModel.flatMap(AIModel.init(rawValue:)) { aiModel = model }
+        meals = snapshot.meals ?? []
+        lastCheckIn = snapshot.lastCheckIn
+        saveNow()
+    }
+
+    /// True once there's something worth keeping beyond the onboarding answers.
+    var hasProgress: Bool {
+        !sessions.isEmpty || !bodyWeights.isEmpty || !chatMessages.isEmpty || activeSession != nil || !meals.isEmpty
+    }
+
+    static func encode(_ snapshot: Snapshot) throws -> Data {
+        try encoder.encode(snapshot)
+    }
+
+    static func decode(_ data: Data) -> Snapshot? {
+        try? decoder.decode(Snapshot.self, from: data)
+    }
 
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
@@ -83,6 +137,7 @@ final class AppStore {
     }()
 
     private func scheduleSave() {
+        onChange?()
         saveWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in self?.saveNow() }
         saveWorkItem = item
@@ -92,12 +147,8 @@ final class AppStore {
     func saveNow() {
         saveWorkItem?.cancel()
         saveWorkItem = nil
-        let snapshot = Snapshot(hasOnboarded: hasOnboarded, profile: profile, plans: plans,
-                                activePlanID: activePlanID, sessions: sessions, bodyWeights: bodyWeights,
-                                activeSession: activeSession, chatMessages: chatMessages,
-                                chatHistory: chatHistory, aiModel: aiModel.rawValue)
         do {
-            let data = try Self.encoder.encode(snapshot)
+            let data = try Self.encoder.encode(makeSnapshot())
             try data.write(to: fileURL, options: [.atomic])
         } catch {
             print("ForgeFit: failed to save data: \(error)")
@@ -115,6 +166,9 @@ final class AppStore {
         isWorkoutPresented = false
         chatMessages = []
         chatHistory = []
+        meals = []
+        lastCheckIn = nil
+        completedWorkout = nil
         saveNow()
     }
 
@@ -176,7 +230,10 @@ final class AppStore {
     // MARK: Workouts
 
     func startWorkout(day: WorkoutDay, plan: WorkoutPlan?) {
-        let exercises = day.exercises.map { LoggedExercise(planned: $0, previous: previousSets(for: $0.exerciseID)) }
+        let exercises = day.exercises.map { planned in
+            LoggedExercise(planned: planned, previous: previousSets(for: planned.exerciseID),
+                           suggestion: suggestion(for: planned.exerciseID, low: planned.repsLow, high: planned.repsHigh))
+        }
         activeSession = WorkoutSession(planID: plan?.id, dayID: day.id, name: day.name, exercises: exercises)
         isWorkoutPresented = true
     }
@@ -199,12 +256,20 @@ final class AppStore {
             planned = PlannedExercise(exerciseID: exercise.id, sets: p.sets, repsLow: p.repsLow,
                                       repsHigh: p.repsHigh, restSeconds: exercise.isCompound ? p.compoundRest : p.rest)
         }
-        return LoggedExercise(planned: planned, previous: previousSets(for: exercise.id))
+        return LoggedExercise(planned: planned, previous: previousSets(for: exercise.id),
+                              suggestion: suggestion(for: exercise.id, low: planned.repsLow, high: planned.repsHigh))
+    }
+
+    /// Today's progression suggestion for an exercise, based on the last time it was done.
+    func suggestion(for exerciseID: String, low: Int, high: Int) -> OverloadSuggestion? {
+        Progression.suggest(for: ExerciseLibrary.exercise(exerciseID), targetLow: low, targetHigh: high,
+                            previous: previousSets(for: exerciseID), metric: profile.useMetric)
     }
 
     @discardableResult
-    func finishActiveWorkout(effort: Int?, notes: String) -> WorkoutSession? {
+    func finishActiveWorkout(effort: Int?, notes: String) -> CompletedWorkout? {
         guard var session = activeSession else { return nil }
+        let badgesBefore = badgeStatuses
         session.endedAt = Date()
         session.effort = effort
         session.notes = notes
@@ -224,7 +289,10 @@ final class AppStore {
         }
         activeSession = nil
         isWorkoutPresented = false
-        return session
+        guard !session.exercises.isEmpty else { return nil }
+        return CompletedWorkout(session: session, records: newRecords(in: session),
+                                newBadges: BadgeBook.newlyEarned(before: badgesBefore, after: badgeStatuses),
+                                streak: weekStreak)
     }
 
     func discardActiveWorkout() {
@@ -414,6 +482,42 @@ final class AppStore {
         }
     }
 
+    // MARK: Badges
+
+    var badgeStatuses: [BadgeStatus] {
+        BadgeBook.evaluate(BadgeBook.facts(sessions: sessions, meals: meals,
+                                           proteinTarget: nutritionTargets.proteinG, calendar: calendar))
+    }
+
+    // MARK: Nutrition
+
+    var nutritionTargets: NutritionTargets { NutritionMath.targets(for: profile) }
+
+    func meals(on day: Date) -> [MealEntry] {
+        NutritionMath.meals(meals, on: day, calendar: calendar)
+    }
+
+    func addMeal(_ meal: MealEntry) {
+        meals.append(meal)
+        meals.sort { $0.date < $1.date }
+    }
+
+    func deleteMeal(id: UUID) {
+        meals.removeAll { $0.id == id }
+    }
+
+    // MARK: Weekly check-in
+
+    /// A check-in is offered once a week when there's been training to review.
+    var isCheckInDue: Bool {
+        let weekAgo = Date().addingTimeInterval(-7 * 86_400)
+        let recent = sessions.filter { $0.startedAt >= weekAgo }.count
+        if let lastCheckIn {
+            return Date().timeIntervalSince(lastCheckIn) >= 6.5 * 86_400 && recent >= 1
+        }
+        return recent >= 2 || sessions.count >= 3
+    }
+
     // MARK: Body weight
 
     func addBodyWeight(kg: Double, date: Date = Date()) {
@@ -467,10 +571,29 @@ final class AppStore {
         let recent = sessions.prefix(8).map { $0.promptSummary(metric: profile.useMetric) }
         parts.append("RECENT WORKOUTS (newest first)\n" + (recent.isEmpty ? "None logged yet." : recent.joined(separator: "\n")))
         parts.append("Workouts this week: \(workoutsThisWeek). Weekly streak: \(weekStreak).")
+        let weekAgo = Date().addingTimeInterval(-7 * 86_400)
+        let recentMeals = meals.filter { $0.date >= weekAgo }
+        if !recentMeals.isEmpty {
+            let days = Set(recentMeals.map { calendar.startOfDay(for: $0.date) }).count
+            let totals = NutritionTotals(meals: recentMeals)
+            let t = nutritionTargets
+            parts.append(String(format: "NUTRITION (last 7 days, %d days logged): avg %.0f kcal and %.0f g protein per logged day; targets %d kcal and %d g protein.",
+                                days, Double(totals.calories) / Double(days), totals.proteinG / Double(days), t.calories, t.proteinG))
+        }
         if bodyWeights.count >= 2, let first = bodyWeights.suffix(10).first, let last = bodyWeights.last {
             parts.append(String(format: "Body weight trend: %.1f kg → %.1f kg over the last %d entries.",
                                 first.weightKg, last.weightKg, min(bodyWeights.count, 10)))
         }
         return parts.joined(separator: "\n\n")
     }
+}
+
+/// Shown after a workout is saved.
+struct CompletedWorkout: Identifiable {
+    let session: WorkoutSession
+    let records: [String]
+    let newBadges: [Badge]
+    let streak: Int
+
+    var id: UUID { session.id }
 }

@@ -53,6 +53,16 @@ enum DemoData {
             let wobble = [0.3, -0.2, 0.1, -0.1, 0.2, -0.3][i % 6]
             return BodyWeightEntry(date: date, weightKg: 84.5 - Double(i) * 0.22 + wobble)
         }
+        let today = calendar.startOfDay(for: now)
+        func at(_ hour: Int) -> Date { calendar.date(byAdding: .hour, value: hour, to: today) ?? today }
+        store.meals = [
+            MealEntry(date: at(8), name: "Greek yogurt & berries", calories: 420, proteinG: 32, carbsG: 48, fatG: 11,
+                      items: ["Greek yogurt · 250 g · 240 kcal", "Blueberries · 1 cup · 85 kcal", "Granola · 25 g · 95 kcal"],
+                      source: .photo),
+            MealEntry(date: at(13), name: "Chicken rice bowl", calories: 690, proteinG: 54, carbsG: 78, fatG: 16,
+                      items: ["Grilled chicken · ~180 g · 300 kcal", "White rice · 1 cup · 240 kcal", "Veg & sauce · 150 kcal"],
+                      source: .description),
+        ].filter { $0.date <= now }
         store.hasOnboarded = true
     }
 
