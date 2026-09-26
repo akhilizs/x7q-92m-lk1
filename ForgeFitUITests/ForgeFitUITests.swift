@@ -264,6 +264,8 @@ final class ForgeFitUITests: XCTestCase {
 
         // Nutrition: add a meal by hand.
         app.buttons["Home"].tap()
+        XCTAssertTrue(text(containing: "This week").waitForExistence(timeout: 5))
+        app.swipeUp()   // bring the nutrition card clear of the floating tab bar
         tapButton(containing: "calories today")
         XCTAssertTrue(app.navigationBars["Nutrition"].waitForExistence(timeout: 5))
         snap("60-nutrition")
