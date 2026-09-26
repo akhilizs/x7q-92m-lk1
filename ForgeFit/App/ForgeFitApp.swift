@@ -81,6 +81,8 @@ struct RootView: View {
             switch phase {
             case .active:
                 TapOutsideToDismissKeyboard.shared.install()
+                RestLiveActivity.endFinished()
+                Reminders.reschedule(for: store)
                 Task { await sync.sync() }
             case .background:
                 store.saveNow()
@@ -183,6 +185,10 @@ struct MainTabView: View {
         }
         .fullScreenCover(isPresented: $store.isWorkoutPresented) {
             ActiveWorkoutView()
+                .environment(store)
+        }
+        .sheet(item: $store.completedWorkout) { completed in
+            WorkoutSummaryView(completed: completed)
                 .environment(store)
         }
     }

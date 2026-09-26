@@ -225,6 +225,12 @@ struct ExerciseInfoRow: View {
                         .font(.caption)
                         .foregroundStyle(Theme.textTertiary)
                 }
+                NavigationLink {
+                    ExerciseGuideView(exercise: exercise, showsDone: false)
+                } label: {
+                    Label("How to do it", systemImage: "questionmark.circle")
+                        .font(.footnote.weight(.semibold))
+                }
             }
         }
         .cardStyle(padding: 12, radius: 20)

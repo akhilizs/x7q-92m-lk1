@@ -358,6 +358,8 @@ enum SyncMerge {
         result.sessions = union(primary.sessions, secondary.sessions).sorted { $0.startedAt > $1.startedAt }
         result.bodyWeights = union(primary.bodyWeights, secondary.bodyWeights).sorted { $0.date < $1.date }
         result.chatMessages = union(primary.chatMessages, secondary.chatMessages).sorted { $0.date < $1.date }
+        result.meals = union(primary.meals ?? [], secondary.meals ?? []).sorted { $0.date < $1.date }
+        result.lastCheckIn = [primary.lastCheckIn, secondary.lastCheckIn].compactMap { $0 }.max()
         if result.chatHistory.isEmpty {
             result.chatHistory = secondary.chatHistory
         }

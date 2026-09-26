@@ -48,6 +48,7 @@ struct StatsView: View {
                      label: "Total volume (\(WeightUnit.label(metric: metric)))", symbol: "scalemass.fill", tint: Theme.blue)
             StatTile(value: "\(store.personalRecords.count)", label: "Exercises with PRs", symbol: "trophy.fill", tint: Theme.pink)
         }
+        BadgesSection()
         WeeklyVolumeChart()
         BodyWeightCard()
         ExerciseProgressCard()
@@ -419,7 +420,7 @@ struct SessionDetailView: View {
                         }
                         ForEach(Array(ex.sets.enumerated()), id: \.element.id) { index, set in
                             HStack {
-                                Text("Set \(index + 1)")
+                                Text(set.isWarmup ? "Warm-up" : set.kind == .drop ? "Drop" : "Set \(ex.sets[..<index].filter { !$0.isWarmup }.count + 1)")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(Theme.textSecondary)
                                     .frame(width: 54, alignment: .leading)
@@ -439,6 +440,10 @@ struct SessionDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
+                ShareSessionToolbarButton(session: session, records: Array(records),
+                                          streak: store.weekStreak, metric: metric)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button(role: .destructive) {
                     confirmDelete = true
                 } label: {
@@ -456,10 +461,40 @@ struct SessionDetailView: View {
     }
 
     private func setLabel(_ set: LoggedSet, tracking: TrackingType, metric: Bool, unit: String) -> String {
+        let rpe = set.rpe.map { " @ RPE \($0.rounded() == $0 ? String(Int($0)) : String(format: "%.1f", $0))" } ?? ""
         switch tracking {
-        case .weightReps: return "\(WeightUnit.format(set.weightKg, metric: metric)) \(unit) × \(set.reps)"
-        case .reps: return "\(set.reps) reps"
+        case .weightReps: return "\(WeightUnit.format(set.weightKg, metric: metric)) \(unit) × \(set.reps)\(rpe)"
+        case .reps: return "\(set.reps) reps\(rpe)"
         case .time: return Format.rest(set.seconds)
+        }
+    }
+}
+
+/// Renders the share card for a past workout and opens the share sheet.
+private struct ShareSessionToolbarButton: View {
+    let session: WorkoutSession
+    let records: [String]
+    let streak: Int
+    let metric: Bool
+    @State private var image: Image?
+
+    var body: some View {
+        Group {
+            if let image {
+                ShareLink(item: image, preview: SharePreview("\(session.name) workout", image: image)) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Share workout")
+            } else {
+                Image(systemName: "square.and.arrow.up").opacity(0.3)
+            }
+        }
+        .task(id: session.id) {
+            let card = WorkoutShareCard(session: session, records: records, streak: streak, metric: metric)
+                .environment(\.colorScheme, .dark)
+            let renderer = ImageRenderer(content: card)
+            renderer.scale = 3
+            image = renderer.uiImage.map { Image(uiImage: $0) }
         }
     }
 }

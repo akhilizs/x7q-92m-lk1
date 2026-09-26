@@ -24,6 +24,9 @@ targets:
     platform: iOS
     sources:
       - path: ForgeFit
+      - path: Shared
+    dependencies:
+      - target: ForgeFitWidgets
     info:
       path: ForgeFit/Info.plist
       properties:
@@ -39,6 +42,8 @@ targets:
           - UIInterfaceOrientationPortrait
         UIUserInterfaceStyle: Dark
         ITSAppUsesNonExemptEncryption: false
+        NSSupportsLiveActivities: true
+        NSCameraUsageDescription: Take a photo of your meal so the AI coach can estimate its calories and protein.
         SupabaseURL: $(SUPABASE_URL)
         SupabaseKey: $(SUPABASE_KEY)
         # Email confirmation and password-reset links open the app (forgefit://auth-callback).
@@ -54,6 +59,28 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_PREVIEWS: YES
+        CODE_SIGN_STYLE: Automatic
+
+  ForgeFitWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ForgeFitWidgets
+      - path: Shared
+    info:
+      path: ForgeFitWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: ForgeFit
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.forgefit.app.widgets
+        PRODUCT_NAME: ForgeFitWidgets
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
         CODE_SIGN_STYLE: Automatic
 
   ForgeFitUITests:

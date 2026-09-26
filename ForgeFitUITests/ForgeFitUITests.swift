@@ -141,6 +141,8 @@ final class ForgeFitUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Start weekly check-in"].waitForExistence(timeout: 5), "Check-in card should show with history and a key")
+        snap("29-home-checkin")
         app.buttons["Coach"].tap()
         let input = app.textViews["coachInput"].exists ? app.textViews["coachInput"] : app.textFields["coachInput"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))
@@ -167,6 +169,119 @@ final class ForgeFitUITests: XCTestCase {
         XCTAssertTrue(hide.waitForNonExistence(timeout: 3))
         _ = text(containing: "Google:").waitForExistence(timeout: 25)
         snap("31-coach-error")
+    }
+
+    func testTrainingFeatures() {
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTestReset", "-uiTestDemoHistory"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
+        XCTAssertTrue(text(containing: "week streak").waitForExistence(timeout: 5))
+        snap("50-home-streak-nutrition")
+
+        // Workout: suggestions from last time's numbers.
+        tapButton(containing: "Start Workout")
+        allowNotificationsIfAsked()
+        XCTAssertTrue(text(containing: "Today:").waitForExistence(timeout: 5), "Progression suggestion should show")
+        snap("51-workout-suggestion")
+        app.buttons["Use suggestion"].firstMatch.tap()
+
+        let options = app.buttons["Exercise options"].firstMatch
+        XCTAssertTrue(options.waitForExistence(timeout: 5))
+        options.tap()
+        if app.buttons["Add warm-up sets"].waitForExistence(timeout: 3) {
+            app.buttons["Add warm-up sets"].tap()
+            XCTAssertTrue(app.buttons["Complete warm-up set"].firstMatch.waitForExistence(timeout: 3))
+            snap("52-warmups")
+        } else {
+            app.tap()
+        }
+
+        options.tap()
+        if app.buttons["Plate calculator"].waitForExistence(timeout: 3) {
+            app.buttons["Plate calculator"].tap()
+            XCTAssertTrue(app.navigationBars["Plate Calculator"].waitForExistence(timeout: 5))
+            snap("53-plate-calculator")
+            tap(app.navigationBars["Plate Calculator"].buttons["Done"])
+        } else {
+            app.tap()
+        }
+
+        options.tap()
+        tap(app.buttons["How to do it"])
+        XCTAssertTrue(text(containing: "REP TEMPO").waitForExistence(timeout: 5))
+        snap("54-exercise-guide")
+        tap(app.navigationBars["How to"].buttons["Done"])
+
+        options.tap()
+        tap(app.buttons["Swap exercise"])
+        XCTAssertTrue(text(containing: "Alternatives").waitForExistence(timeout: 5) || app.staticTexts["ALTERNATIVES"].exists)
+        snap("55-swap-exercise")
+        tap(app.buttons["Cancel"])
+
+        options.tap()
+        tap(app.buttons["Superset with next"])
+        XCTAssertTrue(text(containing: "SUPERSET A").waitForExistence(timeout: 3))
+        snap("56-superset")
+
+        // RPE on the first working set.
+        let setOptions = app.buttons.matching(NSPredicate(format: "label == 'Set 1 options'")).firstMatch
+        if setOptions.waitForExistence(timeout: 3) {
+            setOptions.tap()
+            if app.buttons["RPE (effort)"].waitForExistence(timeout: 3) {
+                app.buttons["RPE (effort)"].tap()
+                let rpe = app.buttons.matching(NSPredicate(format: "label BEGINSWITH '8 ·'")).firstMatch
+                if rpe.waitForExistence(timeout: 3) { rpe.tap() } else { app.tap() }
+            } else {
+                app.tap()
+            }
+        }
+
+        // Finishing a set in a superset sends you straight to the partner exercise.
+        app.buttons["Complete set 1"].firstMatch.tap()
+        XCTAssertTrue(text(containing: "Superset →").waitForExistence(timeout: 3))
+        snap("57-superset-next")
+
+        tapButton(containing: "Finish")
+        tapButton(containing: "Save workout")
+        XCTAssertTrue(text(containing: "WORKOUT SAVED").waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["Share workout"].waitForExistence(timeout: 8))
+        snap("58-workout-summary")
+        app.swipeUp()
+        snap("58b-workout-summary-share")
+        tap(app.buttons["Done"])
+
+        // Badges
+        app.buttons["Progress"].tap()
+        tapButton(containing: "Badges")
+        XCTAssertTrue(app.navigationBars["Badges"].waitForExistence(timeout: 5))
+        snap("59-badges")
+
+        // Nutrition: add a meal by hand.
+        app.buttons["Home"].tap()
+        tapButton(containing: "calories today")
+        XCTAssertTrue(app.navigationBars["Nutrition"].waitForExistence(timeout: 5))
+        snap("60-nutrition")
+        tapButton(containing: "Add manually")
+        let name = app.textFields["mealName"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Protein shake")
+        snap("61-meal-editor")
+        tapButton(containing: "Save meal")
+        XCTAssertTrue(text(containing: "Protein shake").waitForExistence(timeout: 5))
+        snap("62-nutrition-added")
+
+        // Reminders
+        app.buttons["Profile"].tap()
+        tapButton(containing: "Reminders")
+        let toggle = app.switches["Workout reminders"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        allowNotificationsIfAsked()
+        XCTAssertTrue(app.datePickers.firstMatch.waitForExistence(timeout: 5), "Turning reminders on shows the time picker")
+        snap("63-reminders")
     }
 
     func testAccountScreens() {

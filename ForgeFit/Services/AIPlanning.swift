@@ -5,6 +5,7 @@ enum AIError: LocalizedError {
     case refused
     case truncated
     case invalidPlan(String)
+    case unreadable
 
     var errorDescription: String? {
         switch self {
@@ -12,6 +13,7 @@ enum AIError: LocalizedError {
         case .refused: return "The coach couldn't help with that request. Try rephrasing it."
         case .truncated: return "The response was cut off before it finished. Please try again."
         case .invalidPlan(let reason): return "The AI returned a plan the app couldn't use (\(reason)). Please try again."
+        case .unreadable: return "The AI's answer couldn't be read. Please try again."
         }
     }
 }
