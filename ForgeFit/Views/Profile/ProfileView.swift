@@ -140,7 +140,7 @@ struct ProfileView: View {
                 .foregroundStyle(Theme.textSecondary)
             if !sync.isConfigured {
                 ActivityRow(symbol: "icloud.slash", title: "Accounts aren't set up",
-                            subtitle: "This build has no Supabase project (see README)", showsChevron: false)
+                            subtitle: "This build has no Supabase project", showsChevron: false)
             } else if sync.isSignedIn {
                 NavigationLink { AccountView() } label: {
                     TimelineView(.periodic(from: .now, by: 30)) { _ in
