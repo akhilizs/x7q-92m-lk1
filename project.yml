@@ -12,7 +12,7 @@ settings:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-    # Accounts & cloud save (see README). The publishable key is meant to ship in apps:
+    # Accounts & cloud save (see supabase/setup.sql). The publishable key is meant to ship in apps:
     # row level security (supabase/setup.sql) limits every account to its own data.
     # Never put a secret key (sb_secret_…) here. Empty values = offline only.
     SUPABASE_URL: https://tfadnmwxuinvcbuanylq.supabase.co

@@ -143,6 +143,8 @@ struct PlanCard: View {
 }
 
 private struct ExerciseLibraryLink: View {
+    @Environment(AppStore.self) private var store
+
     var body: some View {
         NavigationLink {
             ExerciseLibraryView()
@@ -151,7 +153,7 @@ private struct ExerciseLibraryLink: View {
                 IconBadge(symbol: "books.vertical.fill", size: 44)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Exercise library").font(.system(size: 16, weight: .medium)).foregroundStyle(.white)
-                    Text("\(ExerciseLibrary.all.count) exercises with form cues")
+                    Text("\(store.exerciseCatalog.count) exercises · add your own")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -165,23 +167,50 @@ private struct ExerciseLibraryLink: View {
 }
 
 struct ExerciseLibraryView: View {
+    @Environment(AppStore.self) private var store
     @State private var search = ""
     @State private var muscle: MuscleGroup?
+    @State private var creating = false
+    @State private var editing: CustomExercise?
 
     private var filtered: [Exercise] {
-        ExerciseLibrary.all.filter { ex in
+        store.exerciseCatalog.filter { ex in
             (muscle == nil || ex.primary == muscle) &&
             (search.isEmpty || ex.name.localizedCaseInsensitiveContains(search))
         }
     }
 
+    private var trimmedSearch: String { search.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 MuscleFilterBar(selection: $muscle)
+                Button {
+                    creating = true
+                } label: {
+                    HStack(spacing: 14) {
+                        IconBadge(symbol: "plus", background: Theme.lilac, foreground: Theme.ink, size: 40)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(trimmedSearch.isEmpty ? "Create your own exercise" : "Create “\(trimmedSearch)”")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Text("Use it in plans and workouts, and your AI coach can pick it too.")
+                                .font(.caption)
+                                .foregroundStyle(Theme.textSecondary)
+                                .multilineTextAlignment(.leading)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .cardStyle(padding: 12, radius: 20)
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel(trimmedSearch.isEmpty ? "Create your own exercise" : "Create \(trimmedSearch) as your own exercise")
+                .accessibilityIdentifier("libraryCreateExercise")
+
                 LazyVStack(spacing: 10) {
                     ForEach(filtered) { ex in
-                        ExerciseInfoRow(exercise: ex)
+                        ExerciseInfoRow(exercise: ex, onEdit: ex.isCustom ? { editing = store.customExercise(id: ex.id) } : nil)
                     }
                 }
             }
@@ -191,12 +220,33 @@ struct ExerciseLibraryView: View {
         .appBackground()
         .navigationTitle("Exercises")
         .searchable(text: $search, prompt: "Search exercises")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    creating = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("New exercise")
+            }
+        }
+        .sheet(isPresented: $creating) {
+            CustomExerciseForm(suggestedName: trimmedSearch) { _ in
+                search = ""
+                muscle = nil
+            }
+        }
+        .sheet(item: $editing) { exercise in
+            CustomExerciseForm(exercise: exercise)
+        }
         .resumeWorkoutBar()
     }
 }
 
 struct ExerciseInfoRow: View {
     let exercise: Exercise
+    /// Set for the user's own exercises.
+    var onEdit: (() -> Void)? = nil
     @State private var expanded = false
 
     var body: some View {
@@ -205,7 +255,10 @@ struct ExerciseInfoRow: View {
                 IconBadge(symbol: exercise.primary.symbol, background: Theme.color(for: exercise.primary),
                           foreground: Theme.ink, size: 40)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(exercise.name).font(.subheadline.weight(.medium))
+                    HStack(spacing: 6) {
+                        Text(exercise.name).font(.subheadline.weight(.medium))
+                        if exercise.isCustom { CustomExerciseTag() }
+                    }
                     Text("\(exercise.primary.displayName) · \(exercise.equipmentLabel)")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
@@ -225,11 +278,22 @@ struct ExerciseInfoRow: View {
                         .font(.caption)
                         .foregroundStyle(Theme.textTertiary)
                 }
-                NavigationLink {
-                    ExerciseGuideView(exercise: exercise, showsDone: false)
-                } label: {
-                    Label("How to do it", systemImage: "questionmark.circle")
-                        .font(.footnote.weight(.semibold))
+                HStack(spacing: 18) {
+                    NavigationLink {
+                        ExerciseGuideView(exercise: exercise, showsDone: false)
+                    } label: {
+                        Label("How to do it", systemImage: "questionmark.circle")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    if let onEdit {
+                        Button {
+                            onEdit()
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                                .font(.footnote.weight(.semibold))
+                        }
+                        .accessibilityLabel("Edit \(exercise.name)")
+                    }
                 }
             }
         }

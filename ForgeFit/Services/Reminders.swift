@@ -1,30 +1,6 @@
 import Foundation
 import UserNotifications
 
-/// Workout and check-in reminder preferences (per device).
-struct ReminderSettings: Codable, Equatable {
-    var workoutsEnabled = false
-    /// Calendar weekdays: 1 = Sunday … 7 = Saturday.
-    var weekdays: Set<Int> = [2, 4, 6]
-    var hour = 18
-    var minute = 0
-    var checkInEnabled = false
-
-    private static let key = "reminderSettings"
-
-    static func load() -> ReminderSettings {
-        guard let data = UserDefaults.standard.data(forKey: key),
-              let settings = try? JSONDecoder().decode(ReminderSettings.self, from: data) else { return ReminderSettings() }
-        return settings
-    }
-
-    func save() {
-        if let data = try? JSONEncoder().encode(self) {
-            UserDefaults.standard.set(data, forKey: Self.key)
-        }
-    }
-}
-
 @MainActor
 enum Reminders {
     private static let workoutPrefix = "forgefit.reminder.workout."
@@ -36,7 +12,7 @@ enum Reminders {
 
     /// Re-creates the reminders so they mention the next workout and current streak.
     static func reschedule(for store: AppStore) {
-        apply(ReminderSettings.load(), nextWorkout: store.activePlan?.nextDay?.name, streak: store.weekStreak)
+        apply(store.reminderSettings, nextWorkout: store.activePlan?.nextDay?.name, streak: store.weekStreak)
     }
 
     static func apply(_ settings: ReminderSettings, nextWorkout: String?, streak: Int) {

@@ -1,7 +1,7 @@
 import Foundation
 
 /// The Supabase project used for accounts and cloud save. Filled in at build time from
-/// the SUPABASE_URL and SUPABASE_KEY build settings (see README); `nil` when the build
+/// the SUPABASE_URL and SUPABASE_KEY build settings (see supabase/setup.sql); `nil` when the build
 /// has no project configured, in which case the app works offline only.
 struct SupabaseConfig {
     let url: URL
@@ -70,7 +70,7 @@ struct SupabaseError: LocalizedError {
         case "refresh_token_not_found", "refresh_token_already_used", "session_not_found", "session_expired":
             return "Your session expired. Log in again to keep saving your progress."
         case "PGRST205", "PGRST202", "42P01", "42883":
-            return "Cloud save isn't set up yet. Run supabase/setup.sql in your Supabase project (see README)."
+            return "Cloud save isn't set up yet. Run supabase/setup.sql in your Supabase project."
         case "23503", "user_not_found":
             return "This account no longer exists. Your progress is still on this iPhone: log in or create a new account to keep saving it."
         case "42501":

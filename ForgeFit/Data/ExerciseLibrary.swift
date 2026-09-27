@@ -1,9 +1,9 @@
 import Foundation
 
-/// Built-in catalog of exercises. IDs are stable and are what the AI coach
-/// references when it builds or edits a plan.
+/// Catalog of exercises: the built-in ones plus the user's own. IDs are stable and are
+/// what the AI coach references when it builds or edits a plan.
 enum ExerciseLibrary {
-    static let all: [Exercise] = [
+    static let builtIn: [Exercise] = [
         // MARK: Chest
         ex("barbell_bench_press", "Barbell Bench Press", .chest, [.triceps, .shoulders], [.barbell, .bench], .weightReps, true,
            "Shoulder blades pinned, bar to mid-chest, drive feet into the floor."),
@@ -245,12 +245,39 @@ enum ExerciseLibrary {
            "Light and rhythmic — great warm-up."),
     ]
 
-    private static let byID: [String: Exercise] = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
+    private static let byID: [String: Exercise] = Dictionary(uniqueKeysWithValues: builtIn.map { ($0.id, $0) })
 
-    static func exercise(_ id: String) -> Exercise? { byID[id] }
+    /// The user's own exercises, kept in step with `AppStore.customExercises`.
+    private static var customByID: [String: Exercise] = [:]
+    private static var customActive: [Exercise] = []
+
+    static func register(_ custom: [CustomExercise]) {
+        customByID = Dictionary(custom.map { ($0.id, $0.asExercise) }, uniquingKeysWith: { first, _ in first })
+        customActive = pickable(custom)
+    }
+
+    /// Everything that can be picked: the user's own exercises (A–Z) first, then the built-in ones.
+    static var all: [Exercise] { customActive + builtIn }
+
+    /// The pickable catalog for a given set of custom exercises.
+    static func catalog(custom: [CustomExercise]) -> [Exercise] {
+        pickable(custom) + builtIn
+    }
+
+    /// Custom exercises that haven't been deleted, A–Z.
+    private static func pickable(_ custom: [CustomExercise]) -> [Exercise] {
+        custom.filter { !$0.isDeleted }
+            .map(\.asExercise)
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Looks up any exercise, including custom ones that were deleted (so history keeps its names).
+    static func exercise(_ id: String) -> Exercise? { byID[id] ?? customByID[id] }
 
     static func name(for id: String) -> String {
-        byID[id]?.name ?? id.replacingOccurrences(of: "_", with: " ").capitalized
+        if let exercise = exercise(id) { return exercise.name }
+        if id.hasPrefix(CustomExercise.idPrefix) { return "Custom exercise" }
+        return id.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     static func available(with equipment: Set<Equipment>) -> [Exercise] {
@@ -261,7 +288,7 @@ enum ExerciseLibrary {
     static func promptCatalog(_ exercises: [Exercise]) -> String {
         exercises.map { e in
             let eq = e.equipment.map(\.rawValue).joined(separator: "+")
-            let kind = e.isCompound ? "compound" : "isolation"
+            let kind = (e.isCompound ? "compound" : "isolation") + (e.isCustom ? ", the athlete's own exercise" : "")
             return "\(e.id) | \(e.name) | \(e.primary.rawValue) | \(eq) | \(e.tracking.promptLabel) | \(kind)"
         }.joined(separator: "\n")
     }
