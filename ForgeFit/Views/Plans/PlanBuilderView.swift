@@ -220,6 +220,7 @@ private struct BuilderExerciseRow: View {
 
 /// Searchable multi-select exercise picker, filtered by muscle and available equipment.
 struct ExercisePickerView: View {
+    @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     let title: String
@@ -230,14 +231,18 @@ struct ExercisePickerView: View {
     @State private var muscle: MuscleGroup?
     @State private var onlyMyEquipment = true
     @State private var selected: [String] = []
+    @State private var creating = false
 
     private var filtered: [Exercise] {
-        ExerciseLibrary.all.filter { ex in
+        store.exerciseCatalog.filter { ex in
             (muscle == nil || ex.primary == muscle)
-                && (!onlyMyEquipment || ex.isAvailable(with: equipment))
+                // Your own exercises always show: you said what they need when you made them.
+                && (!onlyMyEquipment || ex.isCustom || ex.isAvailable(with: equipment))
                 && (search.isEmpty || ex.name.localizedCaseInsensitiveContains(search))
         }
     }
+
+    private var trimmedSearch: String { search.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
         NavigationStack {
@@ -251,6 +256,29 @@ struct ExercisePickerView: View {
                 .listRowBackground(Theme.surface)
 
                 Section {
+                    Button {
+                        creating = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            IconBadge(symbol: "plus", background: Theme.lilac, foreground: Theme.ink, size: 36)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(trimmedSearch.isEmpty ? "Create your own exercise" : "Create “\(trimmedSearch)”")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("Can't find it? Add it and it's saved for next time.")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(trimmedSearch.isEmpty ? "Create your own exercise" : "Create \(trimmedSearch) as your own exercise")
+                    .accessibilityIdentifier("pickerCreateExercise")
+                }
+                .listRowBackground(Theme.surface)
+
+                Section {
                     ForEach(filtered) { ex in
                         Button {
                             toggle(ex.id)
@@ -260,7 +288,7 @@ struct ExercisePickerView: View {
                         .buttonStyle(.plain)
                     }
                 } header: {
-                    Text("\(filtered.count) exercises")
+                    Text(filtered.count == 1 ? "1 exercise" : "\(filtered.count) exercises")
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -281,6 +309,14 @@ struct ExercisePickerView: View {
                     }
                     .font(.headline)
                     .disabled(selected.isEmpty)
+                }
+            }
+            .sheet(isPresented: $creating) {
+                CustomExerciseForm(suggestedName: trimmedSearch) { exercise in
+                    // Show and pick the new exercise straight away.
+                    search = ""
+                    muscle = nil
+                    if !selected.contains(exercise.id) { selected.append(exercise.id) }
                 }
             }
         }
@@ -305,7 +341,10 @@ private struct PickerRow: View {
             IconBadge(symbol: exercise.primary.symbol, background: Theme.color(for: exercise.primary),
                       foreground: Theme.ink, size: 36)
             VStack(alignment: .leading, spacing: 2) {
-                Text(exercise.name).font(.subheadline.weight(.semibold))
+                HStack(spacing: 6) {
+                    Text(exercise.name).font(.subheadline.weight(.semibold))
+                    if exercise.isCustom { CustomExerciseTag() }
+                }
                 Text("\(exercise.primary.displayName) · \(exercise.equipmentLabel)")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)

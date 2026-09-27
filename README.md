@@ -24,6 +24,7 @@ ForgeFit is a native SwiftUI iPhone app that builds your workout plan, tracks ev
 - **AI plan generator**: pick your goal, experience, days per week, session length, the **machines & equipment you have**, and optional focus muscles or notes (e.g. "bad left knee"). Gemini designs a full weekly program with sets, rep ranges, rest times and cues.
 - **Instant generator**: the same inputs, built on-device with no internet or API key needed.
 - **Build your own**: create days, add exercises from a 100+ exercise library (filter by muscle and your equipment), and set sets, reps and rest for each one.
+- **Your own exercises:** missing a move? Create it (name, muscles, equipment, how you log it, form notes) from the exercise library or right inside the exercise picker. It works in plans, workouts, swaps, progress charts and AI-built plans, and syncs with your account.
 - Edit, duplicate and switch between saved plans. The app rotates to the next day after each workout.
 
 **Workout tracking**
@@ -118,7 +119,7 @@ project.yml                     XcodeGen project definition
 ForgeFit/
   App/ForgeFitApp.swift         App entry, tab bar, resume-workout bar
   Models/                       Profile, equipment, exercises, plans, sessions, chat
-  Data/ExerciseLibrary.swift    Built-in exercise catalog (IDs the AI references)
+  Data/ExerciseLibrary.swift    Built-in catalog plus your own exercises (IDs the AI references)
   Services/
     AppStore.swift              @Observable state + JSON persistence + stats
     PlanGenerator.swift         Offline rule-based plan generator

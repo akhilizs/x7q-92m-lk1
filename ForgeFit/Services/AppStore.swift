@@ -19,6 +19,17 @@ final class AppStore {
     var meals: [MealEntry] { didSet { scheduleSave() } }
     /// When the coach last ran a weekly check-in.
     var lastCheckIn: Date? { didSet { scheduleSave() } }
+    /// Exercises the user created, including deleted ones (so history keeps their names).
+    var customExercises: [CustomExercise] {
+        didSet {
+            ExerciseLibrary.register(customExercises)
+            scheduleSave()
+        }
+    }
+    /// Reminder preferences. Saved on this device only (not part of the synced data).
+    var reminderSettings: ReminderSettings {
+        didSet { if reminderSettings != oldValue { reminderSettings.save() } }
+    }
 
     /// UI state (not persisted)
     var isWorkoutPresented = false
@@ -46,6 +57,7 @@ final class AppStore {
         var aiModel: String?
         var meals: [MealEntry]? = nil
         var lastCheckIn: Date? = nil
+        var customExercises: [CustomExercise]? = nil
     }
 
     init() {
@@ -72,6 +84,15 @@ final class AppStore {
         aiModel = snapshot?.aiModel.flatMap(AIModel.init(rawValue:)) ?? .flash
         meals = snapshot?.meals ?? []
         lastCheckIn = snapshot?.lastCheckIn
+        let custom = snapshot?.customExercises ?? []
+        customExercises = custom
+        ExerciseLibrary.register(custom)
+        if resetForTests {
+            reminderSettings = ReminderSettings()
+            reminderSettings.save()
+        } else {
+            reminderSettings = ReminderSettings.load()
+        }
 
         if arguments.contains("-uiTestDemoHistory") {
             DemoData.seed(self)
@@ -90,7 +111,7 @@ final class AppStore {
                  activePlanID: activePlanID, sessions: sessions, bodyWeights: bodyWeights,
                  activeSession: activeSession, chatMessages: chatMessages,
                  chatHistory: chatHistory, aiModel: aiModel.rawValue,
-                 meals: meals, lastCheckIn: lastCheckIn)
+                 meals: meals, lastCheckIn: lastCheckIn, customExercises: customExercises)
     }
 
     /// Replaces everything with `snapshot` (for example progress loaded from the user's account).
@@ -108,12 +129,14 @@ final class AppStore {
         if let model = snapshot.aiModel.flatMap(AIModel.init(rawValue:)) { aiModel = model }
         meals = snapshot.meals ?? []
         lastCheckIn = snapshot.lastCheckIn
+        customExercises = snapshot.customExercises ?? []
         saveNow()
     }
 
     /// True once there's something worth keeping beyond the onboarding answers.
     var hasProgress: Bool {
         !sessions.isEmpty || !bodyWeights.isEmpty || !chatMessages.isEmpty || activeSession != nil || !meals.isEmpty
+            || !customExercises.isEmpty
     }
 
     static func encode(_ snapshot: Snapshot) throws -> Data {
@@ -168,6 +191,7 @@ final class AppStore {
         chatHistory = []
         meals = []
         lastCheckIn = nil
+        customExercises = []
         completedWorkout = nil
         saveNow()
     }
@@ -225,6 +249,35 @@ final class AppStore {
     func setNextDay(planID: UUID, index: Int) {
         guard let i = plans.firstIndex(where: { $0.id == planID }) else { return }
         plans[i].nextDayIndex = index
+    }
+
+    // MARK: Custom exercises
+
+    /// Everything the user can pick from, their own exercises first. Views that read this
+    /// update when a custom exercise is added, edited or deleted.
+    var exerciseCatalog: [Exercise] { ExerciseLibrary.catalog(custom: customExercises) }
+
+    func customExercise(id: String) -> CustomExercise? {
+        customExercises.first { $0.id == id }
+    }
+
+    /// Adds a new custom exercise or saves changes to an existing one.
+    func saveCustomExercise(_ exercise: CustomExercise) {
+        var clean = exercise
+        clean.name = exercise.trimmedName
+        clean.notes = exercise.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        clean.secondary = exercise.secondary.filter { $0 != exercise.primary }
+        if let index = customExercises.firstIndex(where: { $0.id == clean.id }) {
+            customExercises[index] = clean
+        } else {
+            customExercises.append(clean)
+        }
+    }
+
+    /// Hides a custom exercise from the pickers. Plans and past workouts that use it keep working.
+    func deleteCustomExercise(id: String) {
+        guard let index = customExercises.firstIndex(where: { $0.id == id }) else { return }
+        customExercises[index].isDeleted = true
     }
 
     // MARK: Workouts

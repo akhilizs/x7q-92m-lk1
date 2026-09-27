@@ -99,7 +99,8 @@ enum PlanGenerator {
     static func generate(_ options: Options) -> WorkoutPlan {
         let days = min(max(options.daysPerWeek, 1), 6)
         let split = splitFor(days: days, level: options.level)
-        let available = ExerciseLibrary.available(with: options.equipment.union([.bodyweight]))
+        // Built-in exercises only: the templates rely on their known roles (main lift, accessory…).
+        let available = ExerciseLibrary.builtIn.filter { $0.isAvailable(with: options.equipment.union([.bodyweight])) }
         let perDay = exerciseCount(minutes: options.sessionMinutes)
 
         var typeCounts: [String: Int] = [:]

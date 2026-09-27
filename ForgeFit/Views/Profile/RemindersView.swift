@@ -2,7 +2,6 @@ import SwiftUI
 
 struct RemindersView: View {
     @Environment(AppStore.self) private var store
-    @State private var settings = ReminderSettings.load()
     @State private var permissionDenied = false
 
     /// Monday first, as Calendar weekday numbers (1 = Sunday).
@@ -10,26 +9,36 @@ struct RemindersView: View {
 
     private var time: Binding<Date> {
         Binding(
-            get: { Calendar.current.date(bySettingHour: settings.hour, minute: settings.minute, second: 0, of: Date()) ?? Date() },
+            get: {
+                let settings = store.reminderSettings
+                return Calendar.current.date(bySettingHour: settings.hour, minute: settings.minute, second: 0, of: Date()) ?? Date()
+            },
             set: {
                 let parts = Calendar.current.dateComponents([.hour, .minute], from: $0)
-                settings.hour = parts.hour ?? 18
-                settings.minute = parts.minute ?? 0
+                store.reminderSettings.hour = parts.hour ?? 18
+                store.reminderSettings.minute = parts.minute ?? 0
             }
         )
     }
 
     var body: some View {
+        // Bound straight to the app's saved settings, so every change sticks the moment it's made.
+        @Bindable var store = store
+        let settings = store.reminderSettings
         List {
             Section {
-                Toggle("Workout reminders", isOn: $settings.workoutsEnabled)
+                Toggle("Workout reminders", isOn: $store.reminderSettings.workoutsEnabled)
                     .tint(Theme.sky)
                 if settings.workoutsEnabled {
                     HStack(spacing: 6) {
                         ForEach(days, id: \.weekday) { day in
                             let on = settings.weekdays.contains(day.weekday)
                             Button {
-                                if on { settings.weekdays.remove(day.weekday) } else { settings.weekdays.insert(day.weekday) }
+                                if on {
+                                    store.reminderSettings.weekdays.remove(day.weekday)
+                                } else {
+                                    store.reminderSettings.weekdays.insert(day.weekday)
+                                }
                                 Haptics.select()
                             } label: {
                                 Text(day.letter)
@@ -50,12 +59,16 @@ struct RemindersView: View {
             } header: {
                 Text("Training days")
             } footer: {
-                Text("A nudge on the days you train, with your next workout and your streak.")
+                if settings.workoutsEnabled && settings.weekdays.isEmpty {
+                    Text("Pick at least one day to get reminders.")
+                } else {
+                    Text("A nudge on the days you train, with your next workout and your streak.")
+                }
             }
             .listRowBackground(Theme.surface)
 
             Section {
-                Toggle("Weekly check-in reminder", isOn: $settings.checkInEnabled)
+                Toggle("Weekly check-in reminder", isOn: $store.reminderSettings.checkInEnabled)
                     .tint(Theme.sky)
             } footer: {
                 Text("Sundays at 6 pm: your AI coach reviews the week and suggests changes to your plan.")
@@ -77,8 +90,7 @@ struct RemindersView: View {
         .navigationTitle("Reminders")
         .navigationBarTitleDisplayMode(.inline)
         .resumeWorkoutBar()
-        .onChange(of: settings) { old, new in
-            new.save()
+        .onChange(of: store.reminderSettings) { old, new in
             let turnedOn = (new.workoutsEnabled && !old.workoutsEnabled) || (new.checkInEnabled && !old.checkInEnabled)
             Task {
                 if turnedOn {

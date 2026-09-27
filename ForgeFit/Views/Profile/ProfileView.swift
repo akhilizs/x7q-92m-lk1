@@ -59,7 +59,7 @@ struct ProfileView: View {
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                         NavigationLink { RemindersView() } label: {
-                            ActivityRow(symbol: "bell.badge", title: "Reminders", subtitle: reminderSummary)
+                            ActivityRow(symbol: "bell.badge", title: "Reminders", subtitle: store.reminderSettings.summary)
                         }
                         .buttonStyle(PressableStyle())
                         NavigationLink { NutritionView() } label: {
@@ -159,16 +159,6 @@ struct ProfileView: View {
                 .buttonStyle(PressableStyle())
             }
         }
-    }
-
-    private var reminderSummary: String {
-        let settings = ReminderSettings.load()
-        guard settings.workoutsEnabled else { return settings.checkInEnabled ? "Weekly check-in only" : "Off" }
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        let time = Calendar.current.date(bySettingHour: settings.hour, minute: settings.minute, second: 0, of: Date())
-            .map { formatter.string(from: $0) } ?? ""
-        return "\(settings.weekdays.count) days a week · \(time)"
     }
 
     private var appVersion: String {

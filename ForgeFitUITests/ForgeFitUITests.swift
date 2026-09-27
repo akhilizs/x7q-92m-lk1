@@ -370,6 +370,76 @@ final class ForgeFitUITests: XCTestCase {
         snap("26-plan-detail")
     }
 
+    func testCustomExercisesAndReminders() {
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTestReset", "-uiTestDemoHistory"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
+
+        // Reminders stay set after going back.
+        app.buttons["Profile"].tap()
+        tapButton(containing: "Reminders")
+        let toggle = app.switches["Workout reminders"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        allowNotificationsIfAsked()
+        tap(app.buttons["Tuesday"])
+        snap("70-reminders-set")
+        tap(app.navigationBars["Reminders"].buttons.element(boundBy: 0))
+        let summary = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "4 days a week")).firstMatch
+        XCTAssertTrue(summary.waitForExistence(timeout: 5), "Profile shows the saved reminders")
+        snap("71-profile-reminders")
+        tapButton(containing: "Reminders")
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(toggle.value as? String, "1", "Reminders stay on after going back")
+        XCTAssertTrue(app.buttons["Tuesday"].isSelected, "Picked days are kept")
+        XCTAssertTrue(app.datePickers.firstMatch.exists, "Time picker still shows")
+        snap("72-reminders-reopened")
+        tap(app.navigationBars["Reminders"].buttons.element(boundBy: 0))
+
+        // Create your own exercise in the library…
+        app.buttons["Plans"].tap()
+        XCTAssertTrue(app.navigationBars["Plans"].waitForExistence(timeout: 5))
+        tapButton(containing: "Exercise library")
+        tap(app.buttons["libraryCreateExercise"])
+        let name = app.textFields["exerciseName"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Landmine Press")
+        tap(app.buttons["primary.shoulders"])
+        snap("73-custom-exercise-form")
+        tap(app.navigationBars["New Exercise"].buttons["Save"])
+        let landmine = text(containing: "Landmine Press")
+        XCTAssertTrue(landmine.waitForExistence(timeout: 5), "New exercise shows in the library")
+        snap("74-library-custom")
+        landmine.tap()
+        tap(app.buttons["Edit Landmine Press"])
+        XCTAssertTrue(app.navigationBars["Edit Exercise"].waitForExistence(timeout: 5))
+        snap("75-edit-custom")
+        tap(app.navigationBars["Edit Exercise"].buttons["Cancel"])
+
+        // …or straight from the exercise picker in a workout.
+        app.buttons["Home"].tap()
+        tapButton(containing: "Start Workout")
+        allowNotificationsIfAsked()
+        tapButton(containing: "Add exercise")
+        XCTAssertTrue(app.navigationBars["Add to Workout"].waitForExistence(timeout: 5))
+        XCTAssertTrue(text(containing: "Landmine Press").waitForExistence(timeout: 5), "Your own exercises show in the picker")
+        tap(app.buttons["pickerCreateExercise"])
+        let pickerName = app.textFields["exerciseName"]
+        XCTAssertTrue(pickerName.waitForExistence(timeout: 5))
+        pickerName.tap()
+        pickerName.typeText("Cable Y Raise")
+        tap(app.buttons["primary.shoulders"])
+        tap(app.navigationBars["New Exercise"].buttons["Save"])
+        let add = app.navigationBars["Add to Workout"].buttons["Add (1)"]
+        XCTAssertTrue(add.waitForExistence(timeout: 5), "The new exercise is picked straight away")
+        snap("76-picker-custom")
+        add.tap()
+        XCTAssertTrue(text(containing: "Cable Y Raise").waitForExistence(timeout: 5), "It's added to the workout")
+        snap("77-workout-custom")
+    }
+
     // MARK: Helpers
 
     private func text(containing value: String) -> XCUIElement {
