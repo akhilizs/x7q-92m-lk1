@@ -89,18 +89,26 @@ struct OnboardingView: View {
                     }
                 }
                 .buttonStyle(GlassButtonStyle())
-                HStack(spacing: 18) {
-                    Button("Skip for now") { skip() }
+                HStack(spacing: 8) {
+                    Button {
+                        skip()
+                    } label: {
+                        Text("Skip for now").frame(minHeight: 44).padding(.horizontal, 8).contentShape(Rectangle())
+                    }
                     if sync.isConfigured && !sync.isSignedIn {
                         Text("·").foregroundStyle(.white.opacity(0.3))
-                        Button("I have an account") { showLogIn = true }
-                            .foregroundStyle(.white)
+                        Button {
+                            showLogIn = true
+                        } label: {
+                            Text("I have an account").frame(minHeight: 44).padding(.horizontal, 8).contentShape(Rectangle())
+                        }
+                        .foregroundStyle(.white)
                     }
                 }
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
                 .frame(maxWidth: .infinity)
-                .padding(.top, 14)
+                .padding(.top, 2)
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 24)
@@ -140,10 +148,17 @@ struct OnboardingView: View {
             .opacity(canContinue ? 1 : 0.4)
 
             if step != .building {
-                Button("Back") { back() }
-                    .font(.footnote)
-                    .foregroundStyle(Theme.textSecondary)
-                    .frame(height: 34)
+                // Full-width, 44 pt tall, so a tap anywhere under Continue goes back.
+                Button {
+                    back()
+                } label: {
+                    Text("Back")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.textSecondary)
             }
         }
         .padding(.horizontal, 24)

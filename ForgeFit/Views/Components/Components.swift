@@ -388,27 +388,39 @@ struct StepperControl: View {
                 .font(.caption.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
             Spacer(minLength: 4)
-            Button {
+            stepButton("minus", accessibility: "Decrease \(label)", disabled: value <= range.lowerBound) {
                 value = max(range.lowerBound, value - step)
-                Haptics.tap()
-            } label: {
-                Image(systemName: "minus").frame(width: 28, height: 28)
             }
-            .buttonStyle(.plain)
-            .background(Circle().fill(Theme.surfaceHigh))
             Text(format(value))
                 .font(.system(.subheadline).weight(.semibold))
                 .monospacedDigit()
                 .frame(minWidth: 44)
-            Button {
+            stepButton("plus", accessibility: "Increase \(label)", disabled: value >= range.upperBound) {
                 value = min(range.upperBound, value + step)
-                Haptics.tap()
-            } label: {
-                Image(systemName: "plus").frame(width: 28, height: 28)
             }
-            .buttonStyle(.plain)
-            .background(Circle().fill(Theme.surfaceHigh))
         }
+    }
+
+    /// A round − / + button. The whole 44 pt square takes the tap (not just the thin symbol),
+    /// and holding it keeps stepping.
+    private func stepButton(_ symbol: String, accessibility: String, disabled: Bool,
+                            action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            Haptics.tap()
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(Theme.surfaceHigh))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .buttonRepeatBehavior(.enabled)
+        .disabled(disabled)
+        .opacity(disabled ? 0.35 : 1)
+        .accessibilityLabel(accessibility)
     }
 }
 
