@@ -299,8 +299,14 @@ final class ForgeFitUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["I have an account"].waitForExistence(timeout: 5))
         snap("40-welcome-account")
-        app.buttons["I have an account"].tap()
-        XCTAssertTrue(text(containing: "Log in to bring").waitForExistence(timeout: 5))
+        let haveAccount = app.buttons["I have an account"]
+        haveAccount.tap()
+        let logInTitle = text(containing: "Log in to bring")
+        // On a just-booted simulator the first tap can be dropped (seen once on CI); try once more.
+        if !logInTitle.waitForExistence(timeout: 5) && haveAccount.isHittable {
+            haveAccount.tap()
+        }
+        XCTAssertTrue(logInTitle.waitForExistence(timeout: 5))
         snap("41-log-in")
 
         let email = app.textFields["authEmail"]
@@ -453,9 +459,16 @@ final class ForgeFitUITests: XCTestCase {
 
     private func tapButton(containing text: String, file: StaticString = #filePath, line: UInt = #line) {
         let button = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
-        XCTAssertTrue(button.waitForExistence(timeout: 5), "No button containing '\(text)'", file: file, line: line)
         var swipes = 0
-        while !button.isHittable && swipes < 8 {
+        // Lazy lists only create rows near the screen, so scroll until the button shows up.
+        if !button.waitForExistence(timeout: 5) {
+            while !button.exists && swipes < 12 {
+                app.swipeUp()
+                swipes += 1
+            }
+        }
+        XCTAssertTrue(button.exists, "No button containing '\(text)'", file: file, line: line)
+        while !button.isHittable && swipes < 12 {
             app.swipeUp()
             swipes += 1
         }
