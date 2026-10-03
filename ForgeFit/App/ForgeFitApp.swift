@@ -75,13 +75,20 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: store.hasOnboarded)
-        .onAppear { TapOutsideToDismissKeyboard.shared.install() }
+        .onAppear {
+            TapOutsideToDismissKeyboard.shared.install()
+            WorkoutLiveActivity.sync(store.activeSession, metric: store.profile.useMetric)
+        }
         .task { await sync.sync() }
+        // Keeps the Lock Screen / Dynamic Island in step with the workout in progress.
+        .onChange(of: store.activeSession) { _, session in
+            WorkoutLiveActivity.sync(session, metric: store.profile.useMetric)
+        }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
                 TapOutsideToDismissKeyboard.shared.install()
-                RestLiveActivity.endFinished()
+                WorkoutLiveActivity.sync(store.activeSession, metric: store.profile.useMetric)
                 Reminders.reschedule(for: store)
                 Task { await sync.sync() }
             case .background:
@@ -92,6 +99,11 @@ struct RootView: View {
             }
         }
         .onOpenURL { url in
+            if url.host == "workout" {
+                // Tapped the workout on the Lock Screen or in the Dynamic Island.
+                if store.activeSession != nil { store.isWorkoutPresented = true }
+                return
+            }
             Task { await sync.handleCallback(url) }
         }
         .sheet(isPresented: Binding(get: { sync.isResettingPassword },

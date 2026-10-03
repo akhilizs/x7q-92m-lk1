@@ -36,7 +36,7 @@ struct FinishWorkoutSheet: View {
                     // Closing the workout cover also dismisses this sheet.
                     store.discardActiveWorkout()
                     RestNotifier.cancel()
-                    RestLiveActivity.stop()
+                    WorkoutLiveActivity.end()
                 }
             } message: {
                 Text("Logged sets from this session will be lost.")
@@ -107,7 +107,7 @@ struct FinishWorkoutSheet: View {
                 let completed = store.finishActiveWorkout(effort: Int(effort),
                                                           notes: notes.trimmingCharacters(in: .whitespacesAndNewlines))
                 RestNotifier.cancel()
-                RestLiveActivity.stop()
+                WorkoutLiveActivity.end()
                 Reminders.reschedule(for: store)
                 Haptics.success()
                 // Show the summary once the workout screen has closed.

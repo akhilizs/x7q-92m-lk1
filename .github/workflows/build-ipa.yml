@@ -1,11 +1,17 @@
 name: Build iOS IPA
 
+# Runs once per push. Pull requests from these branches show the same results, so there's no
+# separate pull_request run.
 on:
   push:
     branches: [main, "claude/**"]
     tags: ["v*"]
-  pull_request:
   workflow_dispatch:
+
+# A newer push to the same work branch stops the build that's still going (main and tags always finish).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/heads/claude/') }}
 
 permissions:
   contents: write
