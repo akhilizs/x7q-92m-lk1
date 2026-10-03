@@ -105,9 +105,9 @@ struct MuscleMapView: View {
     /// starts at the waist.
     private func viewBox(_ region: Region) -> CGRect {
         switch region {
-        case .upper: return CGRect(x: 4, y: 3, width: 92, height: 101)
-        case .lower: return CGRect(x: 30, y: 79, width: 40, height: 116)
-        case .full, .auto: return CGRect(x: 4, y: 3, width: 92, height: 192)
+        case .upper: return CGRect(x: 5, y: 3, width: 90, height: 101)
+        case .lower: return CGRect(x: 28, y: 80, width: 44, height: 114)
+        case .full, .auto: return CGRect(x: 5, y: 3, width: 90, height: 191)
         }
     }
 

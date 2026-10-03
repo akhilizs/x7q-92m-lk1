@@ -1,24 +1,31 @@
-"""Turns the rough muscle shapes in shapes.py into the final map.
+"""Turns the muscle shapes in shapes.py into the final map (needs numpy, scipy, scikit-image,
+shapely and pillow).
 
-Each muscle is grown until it nearly meets its neighbours (the body is split between muscles
-by nearest muscle), clipped to the body outline, then shrunk a little so a thin line of the
-silhouette shows between muscles — like an anatomy chart. Joints, hands, feet and the head
-stay as plain silhouette because no muscle reaches them.
+The body is drawn as a picture. Every point of it goes to the nearest muscle shape (so neighbouring
+muscles meet half way), each muscle then gives up a thin band along its edges so the silhouette
+shows between muscles as an even line, and the result is blurred and traced back to an outline,
+which rounds every corner. Head, hands, feet and joints stay plain silhouette because no muscle
+reaches them.
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from shapely.geometry import Polygon, MultiPoint, MultiPolygon
-from shapely.ops import unary_union, voronoi_diagram
-from shapely import STRtree
+import numpy as np
+from PIL import Image, ImageDraw
+from scipy import ndimage
+from skimage import measure
+from shapely.geometry import Polygon
 from shapes import FRONT, BACK, expand
 
-GROW = 1.4       # how far a muscle may spread from its rough shape
-GAP = 0.9        # the line left between neighbouring muscles
-RIM = 0.6        # the silhouette edge left around the muscles
-ROUND = 0.9      # corner rounding, so muscles stay organic rather than panel-like
-SIMPLIFY = 0.2   # drop points closer than this to the outline (the map is drawn at most ~2pt per unit)
+RES = 10         # pixels per unit while fitting
+GROW = 2.4       # how far a muscle may spread to meet its neighbours
+GAP = 0.75       # the silhouette line between neighbouring muscles
+RIM = 0.1        # extra silhouette edge around the muscles (on top of half a gap)
+SMOOTH = 0.75    # corner rounding
+SIMPLIFY = 0.1   # drop points closer than this to the outline
+W, H = 100 * RES, 200 * RES
 
-def spline(pts, steps=10):
+def spline(pts, steps=8):
+    """A closed Catmull-Rom curve through the points."""
     n = len(pts); out = []
     for i in range(n):
         p0, p1, p2, p3 = pts[(i-1) % n], pts[i], pts[(i+1) % n], pts[(i+2) % n]
@@ -30,52 +37,68 @@ def spline(pts, steps=10):
                         u**3*p1[1] + 3*u*u*t*c1[1] + 3*u*t*t*c2[1] + t**3*p2[1]))
     return out
 
-def largest(geom):
-    if isinstance(geom, MultiPolygon):
-        return max(geom.geoms, key=lambda g: g.area)
-    return geom
+def raster(pts):
+    img = Image.new('L', (W, H), 0)
+    ImageDraw.Draw(img).polygon([(x * RES, y * RES) for x, y in spline(pts)], fill=255)
+    return np.asarray(img) > 127
 
-def build_view(shapes, grow=None, gap=None, rounding=None):
-    grow = GROW if grow is None else grow
-    gap = GAP if gap is None else gap
-    rounding = ROUND if rounding is None else rounding
+def bbox(mask, margin):
+    ys, xs = np.nonzero(mask)
+    return (max(ys.min() - margin, 0), min(ys.max() + margin + 1, H),
+            max(xs.min() - margin, 0), min(xs.max() + margin + 1, W))
+
+def trace(mask, sigma):
+    """The blurred mask's outline (largest piece) in canvas units."""
+    y0, y1, x0, x1 = bbox(mask, int(4 * sigma * RES) + 2)
+    field = ndimage.gaussian_filter(mask[y0:y1, x0:x1].astype(np.float32), sigma * RES)
+    contours = measure.find_contours(field, 0.5)
+    if not contours:
+        return None
+    ring = max(contours, key=lambda c: Polygon(c).area if len(c) > 3 else 0)
+    poly = Polygon([((x0 + c + 0.5) / RES, (y0 + r + 0.5) / RES) for r, c in ring]).buffer(0)
+    if poly.is_empty or poly.area < 0.5:
+        return None
+    if poly.geom_type == 'MultiPolygon':
+        poly = max(poly.geoms, key=lambda g: g.area)
+    poly = poly.simplify(SIMPLIFY)
+    return [(round(x, 2), round(y, 2)) for x, y in list(poly.exterior.coords)[:-1]]
+
+def build_view(shapes):
     parts = expand(shapes)
-    body = unary_union([Polygon(spline(p)).buffer(0) for k, p in parts if k == 'base'])
-    body = body.buffer(0.6, join_style=1).buffer(-0.6, join_style=1)   # round off the joins
-    inside = body.buffer(-RIM, join_style=1)
-    seeds = [(k, Polygon(spline(p)).buffer(0)) for k, p in parts if k not in ('base', 'body')]
+    body = np.zeros((H, W), bool)
+    for kind, pts in parts:
+        if kind == 'base':
+            body |= raster(pts)
+    body = ndimage.gaussian_filter(body.astype(np.float32), 0.5 * RES) > 0.5   # soften the joins
+    inside = ndimage.distance_transform_edt(body) >= RIM * RES
 
-    # Split the body between muscles: Voronoi cells of points sampled along each muscle's edge.
-    samples, owner = [], []
-    for i, (_, poly) in enumerate(seeds):
-        ring = poly.exterior
-        n = max(12, int(ring.length / 0.6))
-        for j in range(n):
-            pt = ring.interpolate(j / n, normalized=True)
-            samples.append(pt); owner.append(i)
-    cells = voronoi_diagram(MultiPoint(samples), envelope=body.envelope.buffer(10))
-    by_owner = [[] for _ in seeds]
-    # Each cell belongs to the muscle whose edge sample it contains.
-    tree = STRtree(samples)
-    for cell in cells.geoms:
-        hits = tree.query(cell, predicate='contains')
-        if len(hits):
-            by_owner[owner[int(hits[0])]].append(cell)
+    seeds = [(kind, raster(pts)) for kind, pts in parts if kind != 'base']
+    nearest = np.full((H, W), np.inf, np.float32)
+    owner = np.full((H, W), -1, np.int32)
+    margin = int(GROW * RES) + 2
+    for i, (_, mask) in enumerate(seeds):
+        y0, y1, x0, x1 = bbox(mask, margin)
+        dist = ndimage.distance_transform_edt(~mask[y0:y1, x0:x1])
+        best = nearest[y0:y1, x0:x1]
+        closer = dist < best
+        best[closer] = dist[closer]
+        owner[y0:y1, x0:x1][closer] = i
+    claimed = inside & (nearest <= GROW * RES)
 
-    outline = largest(body).simplify(SIMPLIFY)
-    out = [('base', [(round(x, 2), round(y, 2)) for x, y in list(outline.exterior.coords)[:-1]])]
-    for i, (kind, poly) in enumerate(seeds):
-        region = unary_union(by_owner[i]).union(poly)
-        grown = poly.buffer(grow, join_style=1).intersection(region).intersection(inside)
-        shape = largest(grown.buffer(-gap / 2, join_style=1))
-        if shape.is_empty:
+    out = [('base', trace(body, 0.01))]
+    for i, (kind, _) in enumerate(seeds):
+        region = claimed & (owner == i)
+        if not region.any():
             continue
-        shape = shape.buffer(-rounding, join_style=1).buffer(rounding, join_style=1).simplify(SIMPLIFY)
-        if shape.is_empty:
+        y0, y1, x0, x1 = bbox(region, 2)
+        core = np.zeros_like(region)
+        core[y0:y1, x0:x1] = ndimage.distance_transform_edt(region[y0:y1, x0:x1]) > GAP / 2 * RES
+        if not core.any():
             continue
-        shape = largest(shape)
-        out.append((kind, [(round(x, 2), round(y, 2)) for x, y in list(shape.exterior.coords)[:-1]]))
+        pts = trace(core, SMOOTH)
+        if pts:
+            out.append((kind, pts))
     return out
 
-def build(**settings):
-    return {'front': build_view(FRONT, **settings), 'back': build_view(BACK, **settings)}
+def build():
+    return {'front': build_view(FRONT), 'back': build_view(BACK)}
