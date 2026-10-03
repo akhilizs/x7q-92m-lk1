@@ -101,7 +101,7 @@ struct ActiveWorkoutView: View {
                 guard !Task.isCancelled, restEnd == end else { return }
                 Haptics.success()
                 restEnd = nil
-                RestLiveActivity.stop()
+                WorkoutLiveActivity.endRest(session: store.activeSession, metric: store.profile.useMetric)
             }
             .task(id: banner) {
                 guard banner != nil else { return }
@@ -138,7 +138,7 @@ struct ActiveWorkoutView: View {
             }
             .onAppear {
                 RestNotifier.requestAuthorization()
-                RestLiveActivity.endFinished()
+                WorkoutLiveActivity.sync(store.activeSession, metric: store.profile.useMetric)
             }
         }
     }
@@ -326,6 +326,7 @@ struct ActiveWorkoutView: View {
     /// Decides what happens after a set: straight into a drop set or the next superset
     /// exercise, a short rest after warm-ups, otherwise the exercise's rest.
     private func handleCompletedSet(exerciseID: UUID, setID: UUID) {
+        WorkoutLiveActivity.focus(on: exerciseID)
         guard let session = store.activeSession,
               let index = session.exercises.firstIndex(where: { $0.id == exerciseID }) else { return }
         let exercise = session.exercises[index]
@@ -359,7 +360,7 @@ struct ActiveWorkoutView: View {
         restEnd = end
         let next = nextUpName(after: exerciseID)
         RestNotifier.schedule(after: seconds, next: next)
-        RestLiveActivity.start(end: end, nextUp: next, workoutName: store.activeSession?.name ?? "Workout")
+        WorkoutLiveActivity.startRest(until: end, session: store.activeSession, metric: store.profile.useMetric)
     }
 
     private func adjustRest(by delta: Int) {
@@ -373,14 +374,14 @@ struct ActiveWorkoutView: View {
         restTotal = max(restTotal + delta, remaining)
         restEnd = newEnd
         RestNotifier.schedule(after: remaining, next: "")
-        RestLiveActivity.update(end: newEnd, nextUp: "")
+        WorkoutLiveActivity.moveRest(to: newEnd, session: store.activeSession, metric: store.profile.useMetric)
         Haptics.tap()
     }
 
     private func skipRest() {
         restEnd = nil
         RestNotifier.cancel()
-        RestLiveActivity.stop()
+        WorkoutLiveActivity.endRest(session: store.activeSession, metric: store.profile.useMetric)
     }
 
     private func nextUpName(after exerciseID: UUID) -> String {
