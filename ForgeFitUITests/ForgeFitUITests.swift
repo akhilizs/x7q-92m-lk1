@@ -337,6 +337,39 @@ final class ForgeFitUITests: XCTestCase {
         XCTAssertTrue(text(containing: "Create a free account").waitForExistence(timeout: 5))
     }
 
+    /// The workout in progress on the Lock Screen and in the Dynamic Island.
+    func testWorkoutLiveActivity() {
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTestReset", "-uiTestDemoHistory"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
+
+        tapButton(containing: "Start Workout")
+        allowNotificationsIfAsked()
+        let completeSet = app.buttons["Complete set 1"].firstMatch
+        XCTAssertTrue(completeSet.waitForExistence(timeout: 5))
+        completeSet.tap()
+        XCTAssertTrue(app.buttons["Skip"].waitForExistence(timeout: 5), "Completing a set starts the rest timer")
+
+        // Dynamic Island: shown once the app is in the background.
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 2)
+        snap("80-dynamic-island")
+
+        // Lock Screen.
+        let lock = NSSelectorFromString("pressLockButton")
+        if XCUIDevice.shared.responds(to: lock) {
+            XCUIDevice.shared.perform(lock)
+            Thread.sleep(forTimeInterval: 2)
+            XCUIDevice.shared.press(.home)   // wake the screen without unlocking
+            Thread.sleep(forTimeInterval: 2)
+            snap("81-lock-screen")
+            XCUIDevice.shared.press(.home)
+        }
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+    }
+
     func testProgressWithHistory() {
         app = XCUIApplication()
         app.launchArguments = ["-uiTestReset", "-uiTestDemoHistory"]
