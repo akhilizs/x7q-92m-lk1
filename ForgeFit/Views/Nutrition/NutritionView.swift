@@ -557,7 +557,7 @@ struct NutritionTargetsView: View {
                         store.profile.calorieTarget = custom ? automatic.calories : nil
                         store.profile.proteinTarget = custom ? automatic.proteinG : nil
                     }))
-                    .tint(Theme.sky)
+                    .tint(Theme.volt)
                 if store.profile.calorieTarget != nil || store.profile.proteinTarget != nil {
                     HStack {
                         Text("Calories")

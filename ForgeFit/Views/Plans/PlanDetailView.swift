@@ -90,29 +90,31 @@ struct PlanContentView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 6) {
-                    InkTag(text: plan.goal.title)
-                    InkTag(text: plan.source.label, symbol: plan.source.symbol)
-                    if isActive { InkTag(text: "Active", symbol: "bolt.fill") }
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 6) {
+                        if isActive { VoltTag(text: "Active", symbol: "bolt.fill", filled: true) }
+                        VoltTag(text: plan.goal.title)
+                    }
+                    Text(plan.name)
+                        .font(.display(24))
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Label(plan.source.label, systemImage: plan.source.symbol)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Theme.textSecondary)
+                    if !plan.summary.isEmpty {
+                        Text(plan.summary)
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                Text(plan.name)
-                    .font(.system(size: 28, weight: .medium))
-                    .italic()
-                    .frame(maxWidth: 210, alignment: .leading)
-                if !plan.summary.isEmpty {
-                    Text(plan.summary)
-                        .font(.footnote)
-                        .foregroundStyle(Theme.inkSecondary)
-                        .frame(maxWidth: 205, alignment: .leading)
-                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                MuscleMapView(exercises: plan.days.flatMap(\.exercises), glow: true)
+                    .frame(width: 118, height: 158)
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .overlay(alignment: .trailing) {
-                FigureArt(symbol: Theme.figure(for: plan.goal), size: 96)
-                    .offset(x: 14, y: 18)
-            }
-            .pastelCard(Theme.tint(for: plan.goal), padding: 20, radius: 30)
+            .graphiteCard(padding: 18, radius: 30, highlighted: isActive)
 
             HStack(spacing: 12) {
                 miniStat("\(plan.days.count)", "days / week")
@@ -130,7 +132,7 @@ struct PlanContentView: View {
 
     private func miniStat(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.system(size: 20, weight: .semibold))
+            Text(value).font(.metric(20)).foregroundStyle(.white)
             Text(label).font(.caption2).foregroundStyle(Theme.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -74,7 +74,7 @@ struct ProfileView: View {
                             Spacer()
                             Toggle("", isOn: $store.profile.useMetric)
                                 .labelsHidden()
-                                .tint(Theme.sky)
+                                .tint(Theme.volt)
                         }
                         .cardStyle(padding: 12, radius: 22)
                         HStack(spacing: 14) {

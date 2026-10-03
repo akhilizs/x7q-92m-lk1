@@ -17,15 +17,6 @@ final class CoachViewModel {
     /// Set when requests with the plan-update function kept failing but plain chat worked.
     @ObservationIgnored private var planUpdatesPausedUntil = Date.distantPast
 
-    static let suggestions: [String] = [
-        "My knees hurt when I squat",
-        "I only have 30 minutes today",
-        "I'm not seeing progress anymore",
-        "Make my plan harder",
-        "I'm tired and unmotivated",
-        "I want bigger arms",
-    ]
-
     private static let staticInstructions = """
     You are Coach Forge, the AI personal trainer inside the ForgeFit app. You help athletes train \
     consistently, safely and effectively, and you can rewrite their workout plan.

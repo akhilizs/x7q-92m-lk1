@@ -96,7 +96,7 @@ struct CustomExerciseForm: View {
                                 .foregroundStyle(Theme.textSecondary)
                         }
                     }
-                    .tint(Theme.sky)
+                    .tint(Theme.volt)
                     .cardStyle(padding: 14, radius: 20)
 
                     field("Form notes", note: "Optional") {

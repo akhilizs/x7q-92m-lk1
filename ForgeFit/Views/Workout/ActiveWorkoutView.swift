@@ -467,7 +467,11 @@ struct ExerciseLogCard: View {
         HStack(alignment: .top, spacing: 12) {
             let muscle = exercise.exercise?.primary ?? .fullBody
             Button(action: actions.guide) {
-                IconBadge(symbol: muscle.symbol, background: Theme.color(for: muscle), foreground: Theme.ink, size: 42)
+                if let info = exercise.exercise {
+                    MuscleBadge(exercise: info, size: 44)
+                } else {
+                    IconBadge(symbol: muscle.symbol, background: Theme.color(for: muscle), foreground: Theme.ink, size: 44)
+                }
             }
             .buttonStyle(PressableStyle())
             .accessibilityLabel("How to do \(exercise.name)")

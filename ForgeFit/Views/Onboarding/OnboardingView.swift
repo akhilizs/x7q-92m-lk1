@@ -326,33 +326,39 @@ struct OnboardingView: View {
             if let plan = generatedPlan {
                 VStack(spacing: 18) {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(.black)
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(Theme.ink)
                         .frame(width: 80, height: 80)
-                        .background(Circle().fill(.white))
+                        .background(Circle().fill(Theme.volt))
+                        .shadow(color: Theme.volt.opacity(0.45), radius: 24)
                         .transition(.scale.combined(with: .opacity))
                     Text("Your plan is ready, \(draft.firstName)!")
                         .font(.system(size: 28, weight: .light))
                         .multilineTextAlignment(.center)
                     VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            InkTag(text: "\(plan.days.count) days / week")
-                            Spacer()
+                        HStack(alignment: .top, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                VoltTag(text: "\(plan.days.count) days / week", filled: true)
+                                Text(plan.name)
+                                    .font(.display(19))
+                                    .foregroundStyle(.white)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                            MuscleMapView(exercises: plan.days.flatMap(\.exercises), glow: true)
+                                .frame(width: 76, height: 100)
                         }
-                        Text(plan.name)
-                            .font(.system(size: 22, weight: .medium))
-                            .italic()
                         ForEach(plan.days) { day in
                             HStack {
-                                Text(day.name).font(.subheadline.weight(.medium))
+                                Text(day.name).font(.subheadline.weight(.semibold))
                                 Spacer()
                                 Text("\(day.exercises.count) exercises · ~\(day.estimatedMinutes) min")
                                     .font(.caption)
-                                    .foregroundStyle(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.textSecondary)
                             }
                         }
                     }
-                    .pastelCard(Theme.paper)
+                    .graphiteCard(highlighted: true)
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "sparkles")
                         Text("Want it even more personal? Add your Gemini API key in Profile to unlock the AI coach — it can rebuild this plan and adapt it as you go.")

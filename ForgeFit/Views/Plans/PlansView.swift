@@ -17,9 +17,9 @@ struct PlansView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(Theme.textSecondary)
                         }
-                        ForEach(Array(orderedPlans.enumerated()), id: \.element.id) { index, plan in
+                        ForEach(orderedPlans) { plan in
                             NavigationLink(value: plan.id) {
-                                PlanCard(plan: plan, isActive: plan.id == store.activePlanID, color: Theme.pastel(index + 1))
+                                PlanCard(plan: plan, isActive: plan.id == store.activePlanID)
                             }
                             .buttonStyle(PressableStyle())
                         }
@@ -82,22 +82,25 @@ struct PlansView: View {
                 showBuilder = true
             } label: {
                 VStack(alignment: .leading, spacing: 6) {
-                    InkTag(text: "Custom")
+                    VoltTag(text: "Custom")
                     Spacer()
+                    Image(systemName: "hammer.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                        .frame(width: 42, height: 42)
+                        .background(Circle().fill(Theme.volt))
+                        .shadow(color: Theme.volt.opacity(0.35), radius: 12)
+                        .padding(.bottom, 6)
                     Text("Build your own")
-                        .font(.system(size: 18, weight: .medium))
-                        .italic()
+                        .font(.display(16))
+                        .foregroundStyle(.white)
                     Text("Pick every exercise, set and rep")
                         .font(.caption)
-                        .foregroundStyle(Theme.inkSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.leading)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .overlay(alignment: .topTrailing) {
-                    FigureArt(symbol: "hammer.fill", size: 46)
-                        .offset(x: 4, y: 26)
-                }
-                .pastelCard(Theme.paper, padding: 14)
+                .graphiteCard(padding: 14)
                 .frame(height: 200)
             }
             .buttonStyle(PressableStyle())
@@ -106,39 +109,40 @@ struct PlansView: View {
     }
 }
 
-/// Pastel program card ("Yoga Time", "Bodybuilding Time" style).
+/// A program: name, goal and the muscles it trains, lit up on a front and back body.
 struct PlanCard: View {
     let plan: WorkoutPlan
     let isActive: Bool
-    var color: Color = Theme.paper
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                InkTag(text: plan.goal.title)
-                if isActive {
-                    InkTag(text: "Active", symbol: "bolt.fill")
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    if isActive {
+                        VoltTag(text: "Active", symbol: "bolt.fill", filled: true)
+                    }
+                    VoltTag(text: plan.goal.title)
                 }
+                Text(plan.name)
+                    .font(.display(19))
+                    .foregroundStyle(.white)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                HStack(spacing: 12) {
+                    MetaLabel(symbol: "calendar", text: "\(plan.days.count) days")
+                    MetaLabel(symbol: "list.bullet", text: "\(plan.totalExercises) ex")
+                    MetaLabel(symbol: plan.source.symbol, text: plan.source.shortLabel)
+                }
+                .lineLimit(1)
             }
-            Text(plan.name)
-                .font(.system(size: 22, weight: .medium))
-                .italic()
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: 200, alignment: .leading)
-            Spacer(minLength: 0)
-            HStack(spacing: 12) {
-                InkMeta(symbol: "calendar", text: "\(plan.days.count) days")
-                InkMeta(symbol: "list.bullet", text: "\(plan.totalExercises) exercises")
-                InkMeta(symbol: plan.source.symbol, text: plan.source.shortLabel)
-            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            MuscleMapView(exercises: plan.days.flatMap(\.exercises), glow: isActive)
+                .frame(width: 104, height: 136)
         }
-        .frame(maxWidth: .infinity, minHeight: 138, alignment: .topLeading)
-        .overlay(alignment: .bottomTrailing) {
-            FigureArt(symbol: Theme.figure(for: plan.goal), size: 104)
-                .offset(x: 12, y: 22)
-        }
-        .pastelCard(color)
+        .frame(minHeight: 136)
+        .graphiteCard(padding: 16, highlighted: isActive)
     }
 }
 
@@ -252,8 +256,7 @@ struct ExerciseInfoRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                IconBadge(symbol: exercise.primary.symbol, background: Theme.color(for: exercise.primary),
-                          foreground: Theme.ink, size: 40)
+                MuscleBadge(exercise: exercise, size: 42)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(exercise.name).font(.subheadline.weight(.medium))

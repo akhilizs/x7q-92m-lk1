@@ -28,7 +28,7 @@ struct RemindersView: View {
         List {
             Section {
                 Toggle("Workout reminders", isOn: $store.reminderSettings.workoutsEnabled)
-                    .tint(Theme.sky)
+                    .tint(Theme.volt)
                 if settings.workoutsEnabled {
                     HStack(spacing: 6) {
                         ForEach(days, id: \.weekday) { day in
@@ -69,7 +69,7 @@ struct RemindersView: View {
 
             Section {
                 Toggle("Weekly check-in reminder", isOn: $store.reminderSettings.checkInEnabled)
-                    .tint(Theme.sky)
+                    .tint(Theme.volt)
             } footer: {
                 Text("Sundays at 6 pm: your AI coach reviews the week and suggests changes to your plan.")
             }

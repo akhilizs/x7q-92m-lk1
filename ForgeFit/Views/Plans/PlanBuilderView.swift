@@ -39,7 +39,7 @@ struct PlanBuilderView: View {
                         .foregroundStyle(Theme.textSecondary)
                     if existing == nil {
                         Toggle("Make this my active plan", isOn: $makeActive)
-                        .tint(Theme.sky)
+                        .tint(Theme.volt)
                     }
                 } header: {
                     Text("Plan")
@@ -251,7 +251,7 @@ struct ExercisePickerView: View {
                     MuscleFilterBar(selection: $muscle)
                         .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                     Toggle("Only equipment I have", isOn: $onlyMyEquipment)
-                        .tint(Theme.sky)
+                        .tint(Theme.volt)
                 }
                 .listRowBackground(Theme.surface)
 
@@ -338,8 +338,7 @@ private struct PickerRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            IconBadge(symbol: exercise.primary.symbol, background: Theme.color(for: exercise.primary),
-                      foreground: Theme.ink, size: 36)
+            MuscleBadge(exercise: exercise, size: 40)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(exercise.name).font(.subheadline.weight(.semibold))

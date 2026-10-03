@@ -20,7 +20,7 @@ struct SwapExerciseSheet: View {
             List {
                 Section {
                     Toggle("Include equipment I don't have", isOn: $showAllEquipment)
-                        .tint(Theme.sky)
+                        .tint(Theme.volt)
                 } footer: {
                     Text("Same muscles as \(current.name). Sets you've already done stay logged.")
                 }
@@ -37,8 +37,7 @@ struct SwapExerciseSheet: View {
                             dismiss()
                         } label: {
                             HStack(spacing: 12) {
-                                IconBadge(symbol: exercise.primary.symbol, background: Theme.color(for: exercise.primary),
-                                          foreground: Theme.ink, size: 38)
+                                MuscleBadge(exercise: exercise, size: 40)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(exercise.name).foregroundStyle(.white)
                                     Text("\(exercise.equipmentLabel) · \(exercise.isCompound ? "Compound" : "Isolation")")
@@ -81,8 +80,7 @@ struct ExerciseGuideView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(spacing: 14) {
-                    IconBadge(symbol: exercise.primary.symbol, background: Theme.color(for: exercise.primary),
-                              foreground: Theme.ink, size: 54)
+                    MuscleBadge(exercise: exercise, size: 58)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(exercise.name)
                             .font(.system(size: 24, weight: .semibold))
@@ -94,6 +92,22 @@ struct ExerciseGuideView: View {
                             .foregroundStyle(Theme.textTertiary)
                     }
                 }
+
+                HStack(spacing: 18) {
+                    MuscleMapView(exercise: exercise, sides: .both, region: .full, glow: true)
+                        .frame(width: 128, height: 150)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Muscles worked").eyebrow()
+                        legendRow(Theme.volt, title: exercise.primary.displayName, caption: "Main target")
+                        if !exercise.secondary.isEmpty {
+                            legendRow(Theme.volt.opacity(0.42),
+                                      title: exercise.secondary.map(\.displayName).joined(separator: ", "),
+                                      caption: "Also works")
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .cardStyle()
 
                 if let tempo = ExerciseGuides.tempo(for: exercise) {
                     TempoGuide(tempo: tempo)
@@ -162,6 +176,20 @@ struct ExerciseGuideView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+        }
+    }
+
+    private func legendRow(_ color: Color, title: String, caption: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Circle().fill(color).frame(width: 9, height: 9).padding(.top, 5)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
     }

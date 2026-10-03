@@ -40,7 +40,8 @@ struct HomeView: View {
                     .tracking(0.8)
                     .foregroundStyle(Theme.textTertiary)
                 Text(store.profile.firstName.isEmpty ? "Hi there" : "Hi, \(store.profile.firstName)")
-                    .font(.system(size: 32, weight: .medium))
+                    .font(.display(28, weight: .bold))
+                    .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 if store.weekStreak > 0 {
@@ -48,11 +49,12 @@ struct HomeView: View {
                         Image(systemName: "flame.fill")
                         Text(store.weekStreak == 1 ? "1-week streak" : "\(store.weekStreak)-week streak")
                     }
-                    .font(.caption.weight(.semibold))
+                    .font(.system(size: 12, weight: .heavy).width(.expanded))
                     .foregroundStyle(Theme.ink)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Capsule().fill(Theme.sand))
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Theme.volt))
+                    .shadow(color: Theme.volt.opacity(0.45), radius: 12)
                     .padding(.top, 2)
                 }
             }
@@ -61,11 +63,11 @@ struct HomeView: View {
                 selection = .profile
             } label: {
                 Text(initials)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
+                    .font(.system(size: 15, weight: .heavy).width(.expanded))
+                    .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
-                    .background(Circle().fill(Theme.tint(for: store.profile.goal)))
-                    .overlay(Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
+                    .background(Circle().fill(Theme.graphiteGradient))
+                    .overlay(Circle().strokeBorder(Theme.volt.opacity(0.7), lineWidth: 1.5))
             }
             .buttonStyle(PressableStyle())
             .accessibilityLabel("Open profile")
@@ -88,22 +90,23 @@ struct HomeView: View {
             HStack(spacing: 12) {
                 Image(systemName: "checklist")
                     .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
                     .frame(width: 36, height: 36)
-                    .background(Circle().fill(Color.white.opacity(0.55)))
+                    .background(Circle().fill(Theme.volt))
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Weekly check-in ready")
                         .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
                     Text("Let your coach review the week")
                         .font(.caption)
-                        .foregroundStyle(Theme.inkSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "arrow.right")
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.volt)
             }
-            .foregroundStyle(Theme.ink)
-            .padding(12)
-            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.sky))
+            .graphiteCard(padding: 12, radius: 22, highlighted: true)
         }
         .buttonStyle(PressableStyle())
         .disabled(coach.isResponding)
@@ -126,7 +129,7 @@ struct HomeView: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Theme.ink)
                     .frame(width: 30, height: 30)
-                    .background(Circle().fill(Theme.lilac))
+                    .background(Circle().fill(Theme.volt))
             }
             .padding(.leading, 8)
             .padding(.trailing, 10)
@@ -151,7 +154,7 @@ struct HomeView: View {
                             NavigationLink {
                                 PlanDetailView(planID: plan.id)
                             } label: {
-                                DayCard(day: day, index: index, color: Theme.pastel(index),
+                                DayCard(day: day, index: index,
                                         isNext: index == min(plan.nextDayIndex, plan.days.count - 1))
                             }
                             .buttonStyle(PressableStyle())
@@ -193,15 +196,18 @@ private struct TodayCard: View {
 
     var body: some View {
         if let plan = store.activePlan, let day = plan.nextDay {
-            ZStack(alignment: .bottomLeading) {
+            ZStack(alignment: .bottom) {
                 PhotoBackdrop(name: "WorkoutLift", gradientStart: 0.0)
-                VStack(alignment: .leading, spacing: 8) {
+                // A lime wash from the top corner so the photo feels lit, not flat.
+                LinearGradient(colors: [Theme.volt.opacity(0.18), .clear], startPoint: .topTrailing, endPoint: .center)
+                    .allowsHitTesting(false)
+                VStack(alignment: .leading, spacing: 0) {
                     HStack {
                         Text("TODAY · DAY \(min(plan.nextDayIndex, plan.days.count - 1) + 1) OF \(plan.days.count)")
-                            .font(.caption2.weight(.bold))
+                            .font(.system(size: 10, weight: .heavy).width(.expanded))
                             .tracking(0.6)
                             .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
+                            .padding(.vertical, 7)
                             .background(.ultraThinMaterial, in: Capsule())
                         Spacer()
                         Menu {
@@ -211,84 +217,102 @@ private struct TodayCard: View {
                         } label: {
                             Image(systemName: "arrow.left.arrow.right")
                                 .font(.system(size: 12, weight: .semibold))
-                                .frame(width: 32, height: 32)
+                                .frame(width: 34, height: 34)
                                 .background(.ultraThinMaterial, in: Circle())
                         }
                         .accessibilityLabel("Change day")
                     }
-                    Spacer()
-                    Text(day.name)
-                        .font(.system(size: 34, weight: .medium))
-                        .italic()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    HStack(spacing: 12) {
-                        Text(day.focus).lineLimit(1)
-                        Text("·")
-                        Text("\(day.exercises.count) exercises")
-                        Text("·")
-                        Text("~\(day.estimatedMinutes) min")
-                    }
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .padding(.bottom, 6)
-                    HStack(spacing: 10) {
-                        Button {
-                            if store.activeSession != nil {
-                                store.isWorkoutPresented = true
-                            } else {
-                                store.startWorkout(day: day, plan: plan)
+                    .padding(8)
+                    Spacer(minLength: 0)
+                    // Frosted glass panel with the workout and the call to action.
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .center, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(day.name)
+                                    .font(.display(25))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
+                                HStack(spacing: 6) {
+                                    Text(day.focus).lineLimit(1)
+                                    Text("·")
+                                    Text("\(day.exercises.count) ex")
+                                    Text("·")
+                                    Text("~\(day.estimatedMinutes) min")
+                                }
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.white.opacity(0.75))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                             }
-                            Haptics.medium()
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: store.activeSession == nil ? "play.fill" : "arrow.uturn.forward")
-                                Text(store.activeSession == nil ? "Start Workout" : "Resume Workout")
-                            }
+                            Spacer(minLength: 0)
+                            MuscleMapView(exercises: day.exercises, glow: true)
+                                .frame(width: 52, height: 66)
                         }
-                        .buttonStyle(PrimaryButtonStyle())
-                        if store.activeSession == nil {
+                        HStack(spacing: 10) {
                             Button {
-                                store.startEmptyWorkout()
+                                if store.activeSession != nil {
+                                    store.isWorkoutPresented = true
+                                } else {
+                                    store.startWorkout(day: day, plan: plan)
+                                }
                                 Haptics.medium()
                             } label: {
-                                Image(systemName: "bolt.fill")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .frame(width: 56, height: 56)
-                                    .background(.ultraThinMaterial, in: Circle())
-                                    .overlay(Circle().strokeBorder(Color.white.opacity(0.2)))
+                                HStack(spacing: 8) {
+                                    Image(systemName: store.activeSession == nil ? "play.fill" : "arrow.uturn.forward")
+                                    Text(store.activeSession == nil ? "Start Workout" : "Resume Workout")
+                                }
                             }
-                            .buttonStyle(PressableStyle())
-                            .accessibilityLabel("Start an empty workout")
+                            .buttonStyle(PrimaryButtonStyle())
+                            .shadow(color: Theme.volt.opacity(0.35), radius: 16, y: 4)
+                            if store.activeSession == nil {
+                                Button {
+                                    store.startEmptyWorkout()
+                                    Haptics.medium()
+                                } label: {
+                                    Image(systemName: "bolt.fill")
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .frame(width: 56, height: 56)
+                                        .background(Circle().fill(Color.white.opacity(0.12)))
+                                        .overlay(Circle().strokeBorder(Color.white.opacity(0.2)))
+                                }
+                                .buttonStyle(PressableStyle())
+                                .accessibilityLabel("Start an empty workout")
+                            }
                         }
                     }
+                    .padding(14)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.28), Color.white.opacity(0.04)],
+                                                         startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                    )
                 }
                 .foregroundStyle(.white)
-                .padding(18)
+                .padding(8)
             }
-            .frame(height: 280)
+            .frame(height: 312)
             .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).strokeBorder(Theme.stroke))
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                InkTag(text: "No plan yet", symbol: "sparkles")
+                VoltTag(text: "No plan yet", symbol: "sparkles", filled: true)
                 Text("Let's build your plan")
-                    .font(.system(size: 26, weight: .medium))
-                    .italic()
+                    .font(.display(22))
+                    .foregroundStyle(.white)
                 Text("Generate one for your goal and equipment, or start an empty workout and log as you go.")
                     .font(.footnote)
-                    .foregroundStyle(Theme.inkSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                 HStack(spacing: 10) {
                     Button("Create a plan") { showGenerator = true }
-                        .buttonStyle(DarkCapsuleButtonStyle())
+                        .buttonStyle(PrimaryButtonStyle())
                     Button {
                         store.startEmptyWorkout()
                     } label: {
                         Image(systemName: "bolt.fill")
-                            .frame(width: 54, height: 54)
-                            .background(Circle().fill(Theme.ink))
+                            .frame(width: 56, height: 56)
+                            .background(Circle().fill(Color.white.opacity(0.1)))
+                            .overlay(Circle().strokeBorder(Color.white.opacity(0.16)))
                             .foregroundStyle(.white)
                     }
                     .buttonStyle(PressableStyle())
@@ -297,7 +321,7 @@ private struct TodayCard: View {
                 .padding(.top, 4)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .pastelCard(Theme.lilac)
+            .graphiteCard(padding: 18, radius: 28, highlighted: true)
             .sheet(isPresented: $showGenerator) { GeneratePlanView().environment(store) }
         }
     }
@@ -308,6 +332,7 @@ private struct TodayCard: View {
 /// Days trained this week, volume and time, in one card.
 private struct WeekCard: View {
     @Environment(AppStore.self) private var store
+    @State private var appeared = false
     private let letters = ["M", "T", "W", "T", "F", "S", "S"]
 
     var body: some View {
@@ -317,32 +342,37 @@ private struct WeekCard: View {
         let thisWeek = store.volumeThisWeekKg
         let lastWeek = store.volumeLastWeekKg
         let targetMinutes = Double(store.profile.daysPerWeek * store.profile.sessionMinutes)
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("This week").font(.headline)
+                Text("This week").font(.display(15, weight: .bold))
                 Spacer()
                 Text("\(store.workoutsThisWeek) of \(store.profile.daysPerWeek) workouts")
-                    .font(.subheadline.monospacedDigit())
+                    .font(.caption.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Theme.textSecondary)
             }
             HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { i in
                     let done = trained.contains(i)
-                    VStack(spacing: 6) {
+                    VStack(spacing: 5) {
                         ZStack {
-                            Circle().fill(done ? Color.white : Color.clear)
-                            Circle().strokeBorder(i == today && !done ? Color.white : Color.white.opacity(done ? 0 : 0.14),
+                            Circle().fill(done ? Theme.volt : Color.white.opacity(0.04))
+                            Circle().strokeBorder(i == today && !done ? Theme.volt : Color.white.opacity(done ? 0 : 0.12),
                                                   lineWidth: 1.5)
                             if done {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .bold))
+                                    .font(.system(size: 12, weight: .heavy))
                                     .foregroundStyle(Theme.ink)
                             }
                         }
-                        .frame(width: 34, height: 34)
+                        .frame(width: 32, height: 32)
+                        .shadow(color: done ? Theme.volt.opacity(0.4) : .clear, radius: 8)
+                        // Pop in one after another when the screen opens.
+                        .scaleEffect(appeared ? 1 : 0.3)
+                        .opacity(appeared ? 1 : 0)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.65).delay(Double(i) * 0.05), value: appeared)
                         Text(letters[i])
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(i == today ? .white : Theme.textTertiary)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(i == today ? Theme.volt : Theme.textTertiary)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -359,17 +389,17 @@ private struct WeekCard: View {
                      progress: targetMinutes > 0 ? store.minutesThisWeek / targetMinutes : 0)
             }
         }
-        .cardStyle(padding: 16, radius: 26)
+        .graphiteCard(padding: 14, radius: 26)
         .accessibilityElement(children: .combine)
+        .onAppear { appeared = true }
     }
 
     private func stat(title: String, value: String, detail: String, progress: Double) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Theme.textSecondary)
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).eyebrow()
             Text(value)
-                .font(.system(size: 20, weight: .semibold).monospacedDigit())
+                .font(.metric(18))
+                .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             ProgressBar(value: min(progress, 1), height: 4)
@@ -403,14 +433,15 @@ private struct NutritionHomeCard: View {
             } label: {
                 HStack(spacing: 14) {
                     RingView(progress: Double(totals.calories) / Double(max(targets.calories, 1)),
-                             color: Theme.sage, lineWidth: 5, size: 46)
+                             color: Theme.volt, lineWidth: 5, size: 46)
                         .overlay(Image(systemName: "fork.knife").font(.system(size: 13, weight: .semibold)))
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Today's fuel")
                             .font(.caption.weight(.medium))
                             .foregroundStyle(Theme.textSecondary)
                         Text("\(totals.calories) / \(targets.calories) kcal")
-                            .font(.system(size: 17, weight: .semibold).monospacedDigit())
+                            .font(.metric(15))
+                            .foregroundStyle(.white)
                         Text("\(Int(totals.proteinG)) / \(targets.proteinG) g protein")
                             .font(.caption)
                             .foregroundStyle(Theme.textTertiary)
@@ -428,48 +459,49 @@ private struct NutritionHomeCard: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                     .frame(width: 46, height: 46)
-                    .background(Circle().fill(Theme.sage))
+                    .background(Circle().fill(.white))
             }
             .buttonStyle(PressableStyle())
             .accessibilityLabel("Snap a meal")
         }
-        .cardStyle(padding: 14, radius: 26)
+        .graphiteCard(padding: 14, radius: 26)
     }
 }
 
 // MARK: - Shared rows
 
-/// Pastel card for one training day ("Triceps Bench Dips" style).
+/// One training day: name, focus and the muscles it hits.
 struct DayCard: View {
     let day: WorkoutDay
     let index: Int
-    let color: Color
     var isNext = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            InkTag(text: isNext ? "Up next" : "Day \(index + 1)", symbol: isNext ? "arrow.right" : nil)
-            Text(day.name)
-                .font(.system(size: 20, weight: .medium))
-                .italic()
+        HStack(alignment: .top, spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
+                VoltTag(text: isNext ? "Up next" : "Day \(index + 1)", symbol: isNext ? "arrow.right" : nil, filled: isNext)
+                Text(day.name)
+                    .font(.display(16))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                Text(day.focus)
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+                HStack(spacing: 10) {
+                    MetaLabel(symbol: "list.bullet", text: "\(day.exercises.count) ex")
+                    MetaLabel(symbol: "clock", text: "~\(day.estimatedMinutes)m")
+                }
                 .lineLimit(1)
-            Text(day.focus)
-                .font(.caption)
-                .foregroundStyle(Theme.inkSecondary)
-                .lineLimit(1)
-                .frame(maxWidth: 150, alignment: .leading)
-            Spacer(minLength: 0)
-            HStack(spacing: 10) {
-                InkMeta(symbol: "list.bullet", text: "\(day.exercises.count) ex")
-                InkMeta(symbol: "clock", text: "~\(day.estimatedMinutes) min")
             }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            MuscleMapView(exercises: day.exercises, glow: isNext)
+                .frame(width: 70, height: 112)
         }
-        .frame(width: 210, height: 150, alignment: .topLeading)
-        .overlay(alignment: .topTrailing) {
-            FigureArt(symbol: Theme.figure(for: day.muscles.first), size: 70)
-                .offset(x: 14, y: 26)
-        }
-        .pastelCard(color)
+        .frame(width: 236, height: 132)
+        .graphiteCard(padding: 14, radius: 24, highlighted: isNext)
     }
 }
 

@@ -42,7 +42,7 @@ struct SectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.display(17, weight: .bold))
             Spacer()
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
@@ -67,7 +67,8 @@ struct StatTile: View {
                 .frame(width: 28, height: 28)
                 .background(Circle().fill(Theme.surfaceHigh))
             Text(value)
-                .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                .font(.metric(21))
+                .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(label)
@@ -123,6 +124,45 @@ struct TagLabel: View {
     }
 }
 
+/// Capsule tag for dark cards: filled lime for the thing that matters ("Active", "Up next"),
+/// otherwise a quiet graphite pill.
+struct VoltTag: View {
+    let text: String
+    var symbol: String? = nil
+    var filled = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let symbol { Image(systemName: symbol) }
+            Text(text)
+        }
+        .font(.system(size: 10, weight: .heavy).width(.expanded))
+        .tracking(0.6)
+        .textCase(.uppercase)
+        .foregroundStyle(filled ? Theme.ink : .white)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(filled ? AnyShapeStyle(Theme.volt) : AnyShapeStyle(Color.white.opacity(0.09))))
+        .overlay(Capsule().strokeBorder(Color.white.opacity(filled ? 0 : 0.08), lineWidth: 1))
+    }
+}
+
+/// Small icon + text pair for dark cards ("4 days", "~50 min").
+struct MetaLabel: View {
+    let symbol: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+            Text(text)
+                .font(.caption.weight(.medium))
+        }
+        .foregroundStyle(Theme.textSecondary)
+    }
+}
+
 /// Black capsule tag for light (pastel) cards — "Yoga", "Bodybuilding".
 struct InkTag: View {
     let text: String
@@ -138,38 +178,6 @@ struct InkTag: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Capsule().fill(Theme.ink))
-    }
-}
-
-/// Small metadata item with an icon on pastel cards.
-struct InkMeta: View {
-    let symbol: String
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: symbol)
-                .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 16, height: 16)
-                .background(Circle().fill(Theme.ink))
-            Text(text)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(Theme.inkSecondary)
-        }
-    }
-}
-
-/// Oversized SF Symbol used as an illustration on pastel cards.
-struct FigureArt: View {
-    let symbol: String
-    var size: CGFloat = 96
-
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: size, weight: .regular))
-            .foregroundStyle(Theme.ink.opacity(0.88))
-            .accessibilityHidden(true)
     }
 }
 
@@ -189,35 +197,59 @@ struct AIBadge: View {
     }
 }
 
-/// Brushed-chrome orb that represents the AI coach.
+/// Brushed-chrome orb that represents the AI coach. With `ambient`, a slowly turning
+/// lime/cyan aura breathes behind it, faster while the coach is replying.
 struct CoachOrb: View {
     var size: CGFloat = 64
     var animating: Bool = false
-    @State private var phase = false
+    var ambient: Bool = false
+    @State private var breathe = false
+    @State private var spin = false
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(Color.white.opacity(0.35))
-                .blur(radius: size * 0.22)
-                .scaleEffect(phase ? 1.1 : 0.85)
-                .opacity(animating ? 0.9 : 0.35)
+            if ambient {
+                Circle()
+                    .fill(AngularGradient(colors: [Theme.volt, Color(red: 0.25, green: 0.92, blue: 1.0),
+                                                   Theme.volt.opacity(0.15), Theme.volt],
+                                          center: .center))
+                    .frame(width: size * 1.3, height: size * 1.3)
+                    .blur(radius: size * 0.3)
+                    .opacity(animating ? 0.95 : 0.55)
+                    .scaleEffect(breathe ? 1.14 : 0.88)
+                    .rotationEffect(.degrees(spin ? 360 : 0))
+            } else {
+                Circle()
+                    .fill(Color.white.opacity(0.35))
+                    .blur(radius: size * 0.22)
+                    .scaleEffect(breathe ? 1.1 : 0.85)
+                    .opacity(animating ? 0.9 : 0.35)
+            }
             Circle()
                 .fill(Theme.aiGradient)
                 .overlay(
                     Circle().fill(RadialGradient(colors: [.white.opacity(0.9), .clear],
                                                  center: .topLeading, startRadius: 1, endRadius: size * 0.6))
                 )
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.5), lineWidth: 1))
+                .overlay(Circle().strokeBorder(ambient ? Theme.volt.opacity(0.7) : Color.white.opacity(0.5), lineWidth: 1))
             Image(systemName: "sparkles")
                 .font(.system(size: size * 0.36, weight: .semibold))
                 .foregroundStyle(Theme.ink)
-                .rotationEffect(.degrees(phase && animating ? 10 : 0))
+                .rotationEffect(.degrees(breathe && animating ? 10 : 0))
         }
         .frame(width: size, height: size)
-        .onAppear {
-            withAnimation(.easeInOut(duration: animating ? 0.9 : 2.6).repeatForever(autoreverses: true)) {
-                phase = true
+        // Restart the loops when the coach starts or stops replying, so the pace follows it.
+        .task(id: animating) {
+            breathe = false
+            spin = false
+            try? await Task.sleep(nanoseconds: 20_000_000)
+            withAnimation(.easeInOut(duration: animating ? 0.8 : 2.4).repeatForever(autoreverses: true)) {
+                breathe = true
+            }
+            if ambient {
+                withAnimation(.linear(duration: animating ? 3 : 10).repeatForever(autoreverses: false)) {
+                    spin = true
+                }
             }
         }
     }
@@ -250,22 +282,26 @@ struct EmptyStateView: View {
     }
 }
 
-/// A thin rounded progress bar.
+/// A thin bar that fills in when it first appears, with a soft glow in its colour.
 struct ProgressBar: View {
     let value: Double
-    var fill: Color = .white
+    var fill: Color = Theme.volt
     var height: CGFloat = 5
+    @State private var appeared = false
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.white.opacity(0.1))
                 Capsule().fill(fill)
-                    .frame(width: max(height, geo.size.width * min(max(value, 0), 1)))
+                    .frame(width: max(height, geo.size.width * (appeared ? min(max(value, 0), 1) : 0)))
+                    .shadow(color: fill.opacity(0.4), radius: height * 0.9)
             }
         }
         .frame(height: height)
+        .animation(.spring(response: 0.8, dampingFraction: 0.85), value: appeared)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: value)
+        .onAppear { appeared = true }
     }
 }
 
@@ -286,23 +322,27 @@ struct DashProgress: View {
     }
 }
 
-/// Circular progress ring (e.g. weekly volume vs last week).
+/// A progress ring that sweeps in when it first appears.
 struct RingView: View {
     let progress: Double
-    var color: Color = .white
+    var color: Color = Theme.volt
     var lineWidth: CGFloat = 6
     var size: CGFloat = 44
+    @State private var appeared = false
 
     var body: some View {
         ZStack {
             Circle().stroke(Color.white.opacity(0.1), lineWidth: lineWidth)
             Circle()
-                .trim(from: 0, to: min(max(progress, 0.02), 1))
+                .trim(from: 0, to: appeared ? min(max(progress, 0.02), 1) : 0)
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
+                .shadow(color: color.opacity(0.35), radius: lineWidth)
         }
         .frame(width: size, height: size)
+        .animation(.spring(response: 0.9, dampingFraction: 0.85), value: appeared)
         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: progress)
+        .onAppear { appeared = true }
     }
 }
 

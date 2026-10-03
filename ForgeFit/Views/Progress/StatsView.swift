@@ -45,8 +45,8 @@ struct StatsView: View {
             StatTile(value: "\(store.sessions.count)", label: "Total workouts", symbol: "figure.strengthtraining.traditional", tint: Theme.accent)
             StatTile(value: "\(store.weekStreak) wk", label: "Weekly streak", symbol: "flame.fill", tint: Theme.orange)
             StatTile(value: Format.compact(WeightUnit.display(store.totalVolumeKg, metric: metric)),
-                     label: "Total volume (\(WeightUnit.label(metric: metric)))", symbol: "scalemass.fill", tint: Theme.blue)
-            StatTile(value: "\(store.personalRecords.count)", label: "Exercises with PRs", symbol: "trophy.fill", tint: Theme.pink)
+                     label: "Total volume (\(WeightUnit.label(metric: metric)))", symbol: "scalemass.fill", tint: Theme.accent)
+            StatTile(value: "\(store.personalRecords.count)", label: "Exercises with PRs", symbol: "trophy.fill", tint: Theme.orange)
         }
         BadgesSection()
         WeeklyVolumeChart()
@@ -60,28 +60,52 @@ struct StatsView: View {
 
 private struct WeeklyVolumeChart: View {
     @Environment(AppStore.self) private var store
+    @State private var selected: Date?
 
     var body: some View {
         let metric = store.profile.useMetric
+        let unit = WeightUnit.label(metric: metric)
         let stats = store.weeklyStats(weeks: 8)
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
+        let current = stats.last
+        let picked = selected.flatMap { date in stats.last { $0.weekStart <= date } }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Weekly volume").font(.headline)
-                    Text("Last 8 weeks · \(WeightUnit.label(metric: metric))")
+                    Text("Weekly volume").font(.display(15, weight: .bold))
+                    Text("Last 8 weeks · \(unit)")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
+                if let current {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(Format.compact(WeightUnit.display(current.volumeKg, metric: metric)))
+                            .font(.metric(18))
+                            .foregroundStyle(.white)
+                        Text("this week").eyebrow()
+                    }
+                }
             }
             Chart(stats) { week in
-                BarMark(
-                    x: .value("Week", week.weekStart, unit: .weekOfYear),
-                    y: .value("Volume", WeightUnit.display(week.volumeKg, metric: metric))
-                )
-                .foregroundStyle(Theme.accentGradient)
-                .cornerRadius(6)
+                let value = WeightUnit.display(week.volumeKg, metric: metric)
+                let emphasised = picked.map { $0.id == week.id } ?? (week.id == current?.id)
+                BarMark(x: .value("Week", week.weekStart, unit: .weekOfYear),
+                        y: .value("Volume", value),
+                        width: .fixed(18))
+                    .foregroundStyle(emphasised ? Theme.volt : Theme.volt.opacity(0.32))
+                    .cornerRadius(4)
+                if let picked, picked.id == week.id {
+                    RuleMark(x: .value("Week", week.weekStart, unit: .weekOfYear))
+                        .foregroundStyle(Color.white.opacity(0.18))
+                        .lineStyle(StrokeStyle(lineWidth: 1))
+                        .annotation(position: .top, spacing: 4,
+                                    overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            ChartTooltip(value: "\(Format.compact(value)) \(unit)",
+                                         caption: "Week of \(Format.dayMonth.string(from: week.weekStart)) · \(week.workouts) workouts")
+                        }
+                }
             }
+            .chartXSelection(value: $selected)
             .chartXAxis {
                 AxisMarks(values: .stride(by: .weekOfYear, count: 2)) { _ in
                     AxisValueLabel(format: .dateTime.day().month(.abbreviated))
@@ -89,22 +113,23 @@ private struct WeeklyVolumeChart: View {
                 }
             }
             .chartYAxis {
-                AxisMarks(position: .leading) { _ in
-                    AxisGridLine().foregroundStyle(Color.white.opacity(0.06))
-                    AxisValueLabel().foregroundStyle(Theme.textSecondary)
+                AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(Color.white.opacity(0.07))
+                    AxisValueLabel().foregroundStyle(Theme.textTertiary)
                 }
             }
-            .frame(height: 180)
+            .frame(height: 150)
+            .padding(.top, 6)
 
             HStack(spacing: 6) {
                 ForEach(stats) { week in
-                    VStack(spacing: 4) {
+                    VStack(spacing: 3) {
                         Text("\(week.workouts)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(week.workouts > 0 ? Theme.accent : Theme.textTertiary)
+                            .font(.caption2.weight(.bold).monospacedDigit())
+                            .foregroundStyle(week.workouts > 0 ? .white : Theme.textTertiary)
                         Circle()
-                            .fill(week.workouts > 0 ? Theme.accent : Color.white.opacity(0.1))
-                            .frame(width: 6, height: 6)
+                            .fill(week.workouts > 0 ? Theme.volt : Color.white.opacity(0.1))
+                            .frame(width: 5, height: 5)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -114,7 +139,7 @@ private struct WeeklyVolumeChart: View {
                 .foregroundStyle(Theme.textTertiary)
                 .frame(maxWidth: .infinity)
         }
-        .cardStyle()
+        .cardStyle(padding: 14)
     }
 }
 
@@ -129,10 +154,10 @@ private struct BodyWeightCard: View {
         let metric = store.profile.useMetric
         let unit = WeightUnit.label(metric: metric)
         let entries = Array(store.bodyWeights.suffix(30))
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Body weight").font(.headline)
+                    Text("Body weight").font(.display(15, weight: .bold))
                     if let last = entries.last {
                         Text("\(WeightUnit.format(last.weightKg, metric: metric)) \(unit) · \(Format.dayMonth.string(from: last.date))")
                             .font(.caption)
@@ -158,39 +183,12 @@ private struct BodyWeightCard: View {
                 .accessibilityLabel("Log body weight")
             }
             if entries.count >= 2 {
-                let values = entries.map { WeightUnit.display($0.weightKg, metric: metric) }
-                let low = (values.min() ?? 0) - 1
-                let high = (values.max() ?? 0) + 1
-                Chart(entries) { item in
-                    LineMark(x: .value("Date", item.date), y: .value("Weight", WeightUnit.display(item.weightKg, metric: metric)))
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(Theme.accentAlt)
-                        .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-                    AreaMark(x: .value("Date", item.date),
-                             yStart: .value("Base", low),
-                             yEnd: .value("Weight", WeightUnit.display(item.weightKg, metric: metric)))
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(LinearGradient(colors: [Theme.accentAlt.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom))
-                    PointMark(x: .value("Date", item.date), y: .value("Weight", WeightUnit.display(item.weightKg, metric: metric)))
-                        .foregroundStyle(Theme.accentAlt)
-                        .symbolSize(30)
-                }
-                .chartYScale(domain: low...high)
-                .chartXAxis {
-                    AxisMarks { _ in
-                        AxisValueLabel(format: .dateTime.day().month(.abbreviated)).foregroundStyle(Theme.textSecondary)
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks(position: .leading) { _ in
-                        AxisGridLine().foregroundStyle(Color.white.opacity(0.06))
-                        AxisValueLabel().foregroundStyle(Theme.textSecondary)
-                    }
-                }
-                .frame(height: 160)
+                TrendChart(points: entries.map { TrendChart.Point(date: $0.date, value: WeightUnit.display($0.weightKg, metric: metric)) },
+                           unit: unit, decimals: 1, padding: 1)
+                    .frame(height: 140)
             }
         }
-        .cardStyle()
+        .cardStyle(padding: 14)
         .alert("Log body weight", isPresented: $showAdd) {
             TextField("Weight (\(unit))", text: $entry)
                 .keyboardType(.decimalPad)
@@ -215,10 +213,10 @@ private struct ExerciseProgressCard: View {
         let ids = store.trackedExerciseIDs
         let metric = store.profile.useMetric
         let unit = WeightUnit.label(metric: metric)
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Strength progress").font(.headline)
+                    Text("Strength progress").font(.display(15, weight: .bold))
                     Text("Estimated 1-rep max (\(unit))")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
@@ -236,38 +234,21 @@ private struct ExerciseProgressCard: View {
                             Image(systemName: "chevron.up.chevron.down")
                         }
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Capsule().fill(Theme.accent.opacity(0.12)))
+                        .background(Capsule().fill(Color.white.opacity(0.08)))
+                        .overlay(Capsule().strokeBorder(Theme.volt.opacity(0.5)))
                     }
                 }
             }
             if let id = selectedID(ids) {
                 let points = store.progression(for: id)
                 if points.count >= 2 {
-                    Chart(points) { point in
-                        LineMark(x: .value("Date", point.date),
-                                 y: .value("e1RM", WeightUnit.display(point.estimatedOneRepMax, metric: metric)))
-                            .interpolationMethod(.monotone)
-                            .foregroundStyle(Theme.aiGradient)
-                            .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-                        PointMark(x: .value("Date", point.date),
-                                  y: .value("e1RM", WeightUnit.display(point.estimatedOneRepMax, metric: metric)))
-                            .foregroundStyle(Theme.violet)
-                    }
-                    .chartXAxis {
-                        AxisMarks { _ in
-                            AxisValueLabel(format: .dateTime.day().month(.abbreviated)).foregroundStyle(Theme.textSecondary)
-                        }
-                    }
-                    .chartYAxis {
-                        AxisMarks(position: .leading) { _ in
-                            AxisGridLine().foregroundStyle(Color.white.opacity(0.06))
-                            AxisValueLabel().foregroundStyle(Theme.textSecondary)
-                        }
-                    }
-                    .frame(height: 170)
+                    TrendChart(points: points.map {
+                        TrendChart.Point(date: $0.date, value: WeightUnit.display($0.estimatedOneRepMax, metric: metric))
+                    }, unit: unit, decimals: 0, padding: 2)
+                    .frame(height: 150)
                 } else {
                     Text("Log this exercise in at least two workouts to see a trend.")
                         .font(.caption)
@@ -496,5 +477,117 @@ private struct ShareSessionToolbarButton: View {
             renderer.scale = 3
             image = renderer.uiImage.map { Image(uiImage: $0) }
         }
+    }
+}
+
+// MARK: - Chart pieces
+
+/// A single trend over time: a 2 pt lime line over a faint wash, the latest value labelled at
+/// the end, and touch-and-drag to read any point.
+struct TrendChart: View {
+    struct Point: Identifiable {
+        let date: Date
+        let value: Double
+        var id: Date { date }
+    }
+
+    let points: [Point]
+    let unit: String
+    var decimals = 1
+    /// Room above and below the data, in the chart's units.
+    var padding: Double = 1
+    @State private var selected: Date?
+
+    var body: some View {
+        let values = points.map(\.value)
+        let low = (values.min() ?? 0) - padding
+        let high = (values.max() ?? 0) + padding
+        let picked = selected.flatMap { date in
+            points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
+        }
+        Chart {
+            ForEach(points) { point in
+                AreaMark(x: .value("Date", point.date),
+                         yStart: .value("Base", low),
+                         yEnd: .value("Value", point.value))
+                    .interpolationMethod(.monotone)
+                    .foregroundStyle(LinearGradient(colors: [Theme.volt.opacity(0.2), Theme.volt.opacity(0)],
+                                                    startPoint: .top, endPoint: .bottom))
+                LineMark(x: .value("Date", point.date), y: .value("Value", point.value))
+                    .interpolationMethod(.monotone)
+                    .foregroundStyle(Theme.volt)
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            }
+            if let picked {
+                RuleMark(x: .value("Date", picked.date))
+                    .foregroundStyle(Color.white.opacity(0.18))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .annotation(position: .top, spacing: 4,
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        ChartTooltip(value: "\(format(picked.value)) \(unit)",
+                                     caption: Format.dayMonth.string(from: picked.date))
+                    }
+                dot(picked)
+            } else if let last = points.last {
+                dot(last)
+                    .annotation(position: .top, alignment: .trailing, spacing: 6) {
+                        Text("\(format(last.value)) \(unit)")
+                            .font(.metric(11))
+                            .foregroundStyle(.white)
+                    }
+            }
+        }
+        .chartYScale(domain: low...high)
+        .chartXSelection(value: $selected)
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                AxisValueLabel(format: .dateTime.day().month(.abbreviated)).foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(Color.white.opacity(0.07))
+                AxisValueLabel().foregroundStyle(Theme.textTertiary)
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    /// An 8 pt dot with a ring in the card colour, so it stays clear of the line.
+    private func dot(_ point: Point) -> some ChartContent {
+        PointMark(x: .value("Date", point.date), y: .value("Value", point.value))
+            .symbolSize(50)
+            .foregroundStyle(Theme.volt)
+            .symbol {
+                Circle()
+                    .fill(Theme.volt)
+                    .frame(width: 9, height: 9)
+                    .overlay(Circle().strokeBorder(Color(white: 0.09), lineWidth: 2).padding(-2))
+            }
+    }
+
+    private func format(_ value: Double) -> String {
+        String(format: "%.\(decimals)f", value)
+    }
+}
+
+/// The value under the finger while scrubbing a chart.
+struct ChartTooltip: View {
+    let value: String
+    let caption: String
+
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(value)
+                .font(.metric(13))
+                .foregroundStyle(.white)
+            Text(caption)
+                .font(.caption2)
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(white: 0.16)))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.white.opacity(0.12)))
     }
 }

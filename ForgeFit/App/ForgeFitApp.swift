@@ -30,7 +30,7 @@ struct ForgeFitApp: App {
                 .environment(store)
                 .environment(sync)
                 .preferredColorScheme(.dark)
-                .tint(Theme.accent)
+                .tint(.white)
         }
     }
 }
@@ -220,6 +220,7 @@ struct MainTabView: View {
 /// Capsule tab bar floating above the content; the selected tab becomes a white circle.
 struct FloatingTabBar: View {
     @Binding var selection: AppTab
+    @Namespace private var tabIndicator
 
     var body: some View {
         HStack(spacing: 14) {
@@ -232,10 +233,17 @@ struct FloatingTabBar: View {
                     }
                 } label: {
                     Image(systemName: tab.symbol)
-                        .font(.system(size: 17, weight: selected ? .semibold : .regular))
-                        .foregroundStyle(selected ? Color.black : Color.white.opacity(0.7))
+                        .font(.system(size: 17, weight: selected ? .bold : .regular))
+                        .foregroundStyle(selected ? Theme.ink : Color.white.opacity(0.6))
                         .frame(width: 50, height: 50)
-                        .background(Circle().fill(selected ? Color.white : Color.clear))
+                        .background {
+                            if selected {
+                                Circle()
+                                    .fill(Theme.volt)
+                                    .shadow(color: Theme.volt.opacity(0.55), radius: 12)
+                                    .matchedGeometryEffect(id: "selectedTab", in: tabIndicator)
+                            }
+                        }
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -247,9 +255,12 @@ struct FloatingTabBar: View {
         .padding(.vertical, 7)
         .background(
             Capsule()
-                .fill(Color(white: 0.09))
-                .overlay(Capsule().strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
-                .shadow(color: .black.opacity(0.7), radius: 22, y: 8)
+                .fill(LinearGradient(colors: [Color(white: 0.15), Color(white: 0.07)], startPoint: .top, endPoint: .bottom))
+                .overlay(Capsule().strokeBorder(LinearGradient(colors: [Color.white.opacity(0.18), Color.white.opacity(0.04)],
+                                                               startPoint: .top, endPoint: .bottom), lineWidth: 1))
+                // A faint lime halo under the bar, plus a deep shadow to lift it off the content.
+                .shadow(color: Theme.volt.opacity(0.10), radius: 24, y: 6)
+                .shadow(color: .black.opacity(0.8), radius: 20, y: 10)
         )
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selection)
     }

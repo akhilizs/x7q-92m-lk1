@@ -150,6 +150,8 @@ final class ForgeFitUITests: XCTestCase {
         app.buttons["Coach"].tap()
         let input = app.textViews["coachInput"].exists ? app.textViews["coachInput"] : app.textFields["coachInput"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 1)   // let the orb's aura settle in
+        snap("29b-coach-welcome")
 
         // The hide-keyboard button appears while typing and closes the keyboard.
         input.tap()
@@ -403,7 +405,7 @@ final class ForgeFitUITests: XCTestCase {
         app.buttons["Plans"].tap()
         XCTAssertTrue(app.navigationBars["Plans"].waitForExistence(timeout: 5))
         snap("26a-plans")
-        let active = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Active'")).firstMatch
+        let active = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'active'")).firstMatch
         XCTAssertTrue(active.waitForExistence(timeout: 5))
         active.tap()
         snap("26-plan-detail")

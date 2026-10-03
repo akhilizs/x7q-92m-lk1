@@ -1,8 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// Monochrome "dark mode done right" design system: pure black canvas,
-/// graphite cards, white primary actions and soft pastel program cards.
+/// Dark design system: pure black canvas, graphite cards, and one high-energy accent
+/// (electric lime) for the things that matter — start, streaks, progress, the active tab.
 enum Theme {
     // Canvas & surfaces
     static let background = Color.black
@@ -11,10 +11,17 @@ enum Theme {
     static let surfaceHigh = Color(white: 0.19)
     static let stroke = Color.white.opacity(0.07)
 
-    // Text
+    // Text: bright white for key numbers and titles, muted grey (#8E8E93) for captions.
     static let textPrimary = Color.white
-    static let textSecondary = Color.white.opacity(0.55)
-    static let textTertiary = Color.white.opacity(0.32)
+    static let textSecondary = Color(red: 0.557, green: 0.557, blue: 0.576)
+    static let textTertiary = Color(red: 0.36, green: 0.36, blue: 0.38)
+
+    /// Electric lime (#D4FF00): primary buttons, streaks, completed sets, trends, the active tab.
+    static let volt = Color(red: 212 / 255, green: 1, blue: 0)
+    /// A deeper lime for gradients and glows.
+    static let voltDeep = Color(red: 0.55, green: 0.78, blue: 0)
+    static let voltGradient = LinearGradient(colors: [Color(red: 0.90, green: 1, blue: 0.42), volt],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing)
 
     /// Text and marks placed on light (pastel / white) cards.
     static let ink = Color(red: 0.05, green: 0.05, blue: 0.06)
@@ -38,14 +45,13 @@ enum Theme {
     static let blue = Color(red: 0.38, green: 0.64, blue: 1.0)
     static let danger = Color(red: 1.0, green: 0.38, blue: 0.38)
 
-    // Monochrome roles
-    static let accent = Color.white
+    // Roles
+    static let accent = volt
     static let accentAlt = Color(white: 0.78)
     static let violet = lilac
     static let pink = rose
 
-    static let accentGradient = LinearGradient(colors: [.white, Color(white: 0.88)],
-                                               startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let accentGradient = voltGradient
     /// Brushed-chrome gradient used for AI elements.
     static let aiGradient = LinearGradient(colors: [Color(white: 0.98), Color(white: 0.70)],
                                            startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -75,29 +81,29 @@ enum Theme {
         case .cardio: return rose
         }
     }
+}
 
-    /// A large figure illustration for program/day cards.
-    static func figure(for muscle: MuscleGroup?) -> String {
-        switch muscle {
-        case .chest, .triceps: return "figure.strengthtraining.functional"
-        case .back, .biceps, .forearms: return "figure.rower"
-        case .shoulders: return "figure.boxing"
-        case .quads, .glutes, .hamstrings, .calves: return "figure.step.training"
-        case .core: return "figure.core.training"
-        case .cardio: return "figure.run"
-        default: return "figure.strengthtraining.traditional"
-        }
+// MARK: - Type
+
+extension Font {
+    /// Wide, heavy display face for screen titles, workout and plan names.
+    static func display(_ size: CGFloat, weight: Font.Weight = .heavy) -> Font {
+        .system(size: size, weight: weight).width(.expanded)
     }
 
-    static func figure(for goal: FitnessGoal) -> String {
-        switch goal {
-        case .buildMuscle: return "figure.strengthtraining.traditional"
-        case .getStronger: return "figure.cross.training"
-        case .loseFat: return "figure.highintensity.intervaltraining"
-        case .endurance: return "figure.run"
-        case .athletic: return "figure.basketball"
-        case .generalFitness: return "figure.mind.and.body"
-        }
+    /// Key numbers (volume, time, streaks): wide and bold, with even-width digits.
+    static func metric(_ size: CGFloat, weight: Font.Weight = .bold) -> Font {
+        .system(size: size, weight: weight).width(.expanded).monospacedDigit()
+    }
+}
+
+extension View {
+    /// Small uppercase label above a section or a number ("THIS WEEK", "VOLUME").
+    func eyebrow() -> some View {
+        font(.system(size: 11, weight: .bold).width(.expanded))
+            .tracking(0.9)
+            .textCase(.uppercase)
+            .foregroundStyle(Theme.textSecondary)
     }
 }
 
@@ -115,17 +121,31 @@ extension View {
         background(AppBackground())
     }
 
+    /// The standard card: graphite with a soft top light (see `graphiteCard`).
     func cardStyle(padding: CGFloat = 16, radius: CGFloat = 24) -> some View {
-        self
+        graphiteCard(padding: padding, radius: radius)
+    }
+
+    /// Dark graphite card with a soft top light. `highlighted` adds a lime edge and glow
+    /// (the active plan, the next day).
+    func graphiteCard(padding: CGFloat = 18, radius: CGFloat = 26, highlighted: Bool = false) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return self
             .padding(padding)
             .background(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(Theme.surface)
+                shape.fill(LinearGradient(colors: [Color(white: 0.135), Color(white: 0.065)],
+                                          startPoint: .topLeading, endPoint: .bottomTrailing))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(Theme.stroke, lineWidth: 1)
+                shape.strokeBorder(
+                    highlighted
+                        ? LinearGradient(colors: [Theme.volt.opacity(0.85), Theme.volt.opacity(0.12)],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing)
+                        : LinearGradient(colors: [Color.white.opacity(0.14), Color.white.opacity(0.03)],
+                                         startPoint: .top, endPoint: .bottom),
+                    lineWidth: highlighted ? 1.2 : 1)
             )
+            .shadow(color: highlighted ? Theme.volt.opacity(0.16) : .clear, radius: highlighted ? 18 : 0, y: highlighted ? 4 : 0)
     }
 
     /// Light pastel card with ink-colored content.
