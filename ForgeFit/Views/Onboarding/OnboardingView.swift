@@ -330,7 +330,6 @@ struct OnboardingView: View {
                         .foregroundStyle(Theme.ink)
                         .frame(width: 80, height: 80)
                         .background(Circle().fill(Theme.volt))
-                        .shadow(color: Theme.volt.opacity(0.45), radius: 24)
                         .transition(.scale.combined(with: .opacity))
                     Text("Your plan is ready, \(draft.firstName)!")
                         .font(.system(size: 28, weight: .light))
@@ -345,7 +344,7 @@ struct OnboardingView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer(minLength: 0)
-                            MuscleMapView(exercises: plan.days.flatMap(\.exercises), glow: true)
+                            MuscleMapView(exercises: plan.days.flatMap(\.exercises))
                                 .frame(width: 76, height: 100)
                         }
                         ForEach(plan.days) { day in

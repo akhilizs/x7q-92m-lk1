@@ -76,7 +76,6 @@ struct ActiveWorkoutView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(Capsule().fill(Theme.volt))
-                        .shadow(color: Theme.volt.opacity(0.35), radius: 14, y: 4)
                         .padding(.top, 96)
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .accessibilityIdentifier("workoutBanner")

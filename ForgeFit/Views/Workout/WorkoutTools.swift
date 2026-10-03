@@ -94,13 +94,13 @@ struct ExerciseGuideView: View {
                 }
 
                 HStack(spacing: 18) {
-                    MuscleMapView(exercise: exercise, sides: .both, region: .full, glow: true)
+                    MuscleMapView(exercise: exercise, sides: .both, region: .full)
                         .frame(width: 128, height: 150)
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Muscles worked").eyebrow()
                         legendRow(Theme.volt, title: exercise.primary.displayName, caption: "Main target")
                         if !exercise.secondary.isEmpty {
-                            legendRow(Theme.volt.opacity(0.42),
+                            legendRow(Theme.voltDeep,
                                       title: exercise.secondary.map(\.displayName).joined(separator: ", "),
                                       caption: "Also works")
                         }

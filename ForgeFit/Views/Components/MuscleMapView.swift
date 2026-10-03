@@ -1,19 +1,18 @@
 import SwiftUI
 
-/// A front and/or back body with the trained muscles lit up: primary muscles in the accent
-/// colour, supporting muscles dimmer. Replaces the generic figure icons on plan, day and
-/// exercise cards.
+/// A front and/or back body with the trained muscles highlighted: primary muscles in the accent,
+/// supporting muscles muted. Used on plan, day and exercise cards.
 struct MuscleMapView: View {
     enum Sides { case front, back, both, auto }
     enum Region { case full, upper, lower, auto }
+    /// `onDark` for the dark cards; `onAccent` draws in ink for the lime hero card.
+    enum Style { case onDark, onAccent }
 
     var primary: Set<MuscleGroup>
     var secondary: Set<MuscleGroup> = []
     var sides: Sides = .both
     var region: Region = .full
-    var highlight: Color = Theme.volt
-    /// A soft glow behind the lit muscles (for larger maps).
-    var glow = false
+    var style: Style = .onDark
 
     var body: some View {
         let lit = Self.drawn(primary)
@@ -32,35 +31,34 @@ struct MuscleMapView: View {
                                                   y: originY)
                 transform = transform.scaledBy(x: scale, y: scale).translatedBy(x: -box.minX, y: -box.minY)
 
-                if glow {
-                    context.drawLayer { layer in
-                        layer.addFilter(.blur(radius: 5 * scale))
-                        for part in parts {
-                            if case .muscle(let group) = part.kind, lit.contains(group) {
-                                layer.fill(Self.path(part.points, transform), with: .color(highlight.opacity(0.55)))
-                            }
-                        }
-                    }
-                }
                 for part in parts {
-                    let shading: GraphicsContext.Shading
+                    let color: Color
                     switch part.kind {
-                    case .base: shading = .color(Color(white: 0.115))
-                    case .body: shading = .color(Color(white: 0.19))
+                    case .base: color = palette.base
+                    case .body: color = palette.body
                     case .muscle(let group):
                         if lit.contains(group) {
-                            shading = .color(highlight)
+                            color = palette.primary
                         } else if supporting.contains(group) {
-                            shading = .color(highlight.opacity(0.42))
+                            color = palette.secondary
                         } else {
-                            shading = .color(Color(white: 0.24))
+                            color = palette.muscle
                         }
                     }
-                    context.fill(Self.path(part.points, transform), with: shading)
+                    context.fill(Self.path(part.points, transform), with: .color(color))
                 }
             }
         }
         .accessibilityHidden(true)
+    }
+
+    private var palette: (base: Color, body: Color, muscle: Color, secondary: Color, primary: Color) {
+        switch style {
+        case .onDark:
+            return (Color(white: 0.15), Color(white: 0.22), Color(white: 0.29), Theme.voltDeep, Theme.volt)
+        case .onAccent:
+            return (Theme.ink.opacity(0.07), Theme.ink.opacity(0.14), Theme.ink.opacity(0.2), Theme.ink.opacity(0.5), Theme.ink)
+        }
     }
 
     // MARK: Layout
@@ -135,13 +133,12 @@ struct MuscleMapView: View {
 
 extension MuscleMapView {
     /// The muscles a single exercise works.
-    init(exercise: Exercise, sides: Sides = .auto, region: Region = .auto, glow: Bool = false) {
-        self.init(primary: [exercise.primary], secondary: Set(exercise.secondary),
-                  sides: sides, region: region, glow: glow)
+    init(exercise: Exercise, sides: Sides = .auto, region: Region = .auto) {
+        self.init(primary: [exercise.primary], secondary: Set(exercise.secondary), sides: sides, region: region)
     }
 
     /// The muscles a set of planned exercises works: the most-trained groups lit fully.
-    init(exercises: [PlannedExercise], sides: Sides = .both, glow: Bool = false) {
+    init(exercises: [PlannedExercise], sides: Sides = .both, style: Style = .onDark) {
         var counts: [MuscleGroup: Int] = [:]
         var supporting = Set<MuscleGroup>()
         for item in exercises {
@@ -152,7 +149,7 @@ extension MuscleMapView {
         let top = counts.values.max() ?? 0
         // Groups with at least a third of the busiest group's sets count as main targets.
         let primary = Set(counts.filter { top > 0 && Double($0.value) >= Double(top) / 3 }.keys)
-        self.init(primary: primary, secondary: supporting.union(counts.keys), sides: sides, region: .full, glow: glow)
+        self.init(primary: primary, secondary: supporting.union(counts.keys), sides: sides, region: .full, style: style)
     }
 }
 
@@ -165,7 +162,6 @@ struct MuscleBadge: View {
         MuscleMapView(exercise: exercise)
             .padding(size * 0.08)
             .frame(width: size, height: size)
-            .background(RoundedRectangle(cornerRadius: size * 0.3, style: .continuous).fill(Color(white: 0.07)))
-            .overlay(RoundedRectangle(cornerRadius: size * 0.3, style: .continuous).strokeBorder(Theme.stroke))
+            .background(RoundedRectangle(cornerRadius: size * 0.3, style: .continuous).fill(Color(white: 0.09)))
     }
 }

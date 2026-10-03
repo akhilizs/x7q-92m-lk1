@@ -1,27 +1,27 @@
 import SwiftUI
 import UIKit
 
-/// Dark design system: pure black canvas, graphite cards, and one high-energy accent
-/// (electric lime) for the things that matter — start, streaks, progress, the active tab.
+/// Calm dark design system: a charcoal canvas, flat cards, plain type and one soft lime
+/// accent used sparingly — the hero card, small pills, progress and the active tab.
 enum Theme {
     // Canvas & surfaces
-    static let background = Color.black
-    static let surface = Color(white: 0.085)
-    static let surfaceRaised = Color(white: 0.13)
-    static let surfaceHigh = Color(white: 0.19)
-    static let stroke = Color.white.opacity(0.07)
+    static let background = Color(white: 16 / 255)       // #101010
+    static let surface = Color(white: 28 / 255)          // #1C1C1C
+    static let surfaceRaised = Color(white: 38 / 255)    // #262626
+    static let surfaceHigh = Color(white: 46 / 255)      // #2E2E2E
+    static let stroke = Color.white.opacity(0.05)
 
-    // Text: bright white for key numbers and titles, muted grey (#8E8E93) for captions.
+    // Text: white for titles and numbers, a warm grey for captions.
     static let textPrimary = Color.white
-    static let textSecondary = Color(red: 0.557, green: 0.557, blue: 0.576)
-    static let textTertiary = Color(red: 0.36, green: 0.36, blue: 0.38)
+    static let textSecondary = Color(red: 152 / 255, green: 151 / 255, blue: 147 / 255)   // #989793
+    static let textTertiary = Color(red: 0.36, green: 0.36, blue: 0.35)
 
-    /// Electric lime (#D4FF00): primary buttons, streaks, completed sets, trends, the active tab.
-    static let volt = Color(red: 212 / 255, green: 1, blue: 0)
-    /// A deeper lime for gradients and glows.
-    static let voltDeep = Color(red: 0.55, green: 0.78, blue: 0)
-    static let voltGradient = LinearGradient(colors: [Color(red: 0.90, green: 1, blue: 0.42), volt],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing)
+    /// Soft lime (#D4FC60): the hero card, primary buttons, small pills, progress, the active tab.
+    static let volt = Color(red: 212 / 255, green: 252 / 255, blue: 96 / 255)
+    /// A muted lime for secondary marks (supporting muscles, past weeks).
+    static let voltDeep = Color(red: 0.55, green: 0.66, blue: 0.27)
+    /// Flat lime (kept as a gradient so it fits where gradients are expected).
+    static let voltGradient = LinearGradient(colors: [volt, volt], startPoint: .top, endPoint: .bottom)
 
     /// Text and marks placed on light (pastel / white) cards.
     static let ink = Color(red: 0.05, green: 0.05, blue: 0.06)
@@ -86,23 +86,21 @@ enum Theme {
 // MARK: - Type
 
 extension Font {
-    /// Wide, heavy display face for screen titles, workout and plan names.
-    static func display(_ size: CGFloat, weight: Font.Weight = .heavy) -> Font {
-        .system(size: size, weight: weight).width(.expanded)
+    /// Titles, workout and plan names: plain SF Pro, semibold.
+    static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+        .system(size: size, weight: weight)
     }
 
-    /// Key numbers (volume, time, streaks): wide and bold, with even-width digits.
-    static func metric(_ size: CGFloat, weight: Font.Weight = .bold) -> Font {
-        .system(size: size, weight: weight).width(.expanded).monospacedDigit()
+    /// Key numbers (volume, time, calories): semibold with even-width digits.
+    static func metric(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+        .system(size: size, weight: weight).monospacedDigit()
     }
 }
 
 extension View {
-    /// Small uppercase label above a section or a number ("THIS WEEK", "VOLUME").
+    /// Small caption above a number or a section ("Volume", "This week").
     func eyebrow() -> some View {
-        font(.system(size: 11, weight: .bold).width(.expanded))
-            .tracking(0.9)
-            .textCase(.uppercase)
+        font(.caption.weight(.medium))
             .foregroundStyle(Theme.textSecondary)
     }
 }
@@ -121,31 +119,18 @@ extension View {
         background(AppBackground())
     }
 
-    /// The standard card: graphite with a soft top light (see `graphiteCard`).
+    /// The standard card (see `graphiteCard`).
     func cardStyle(padding: CGFloat = 16, radius: CGFloat = 24) -> some View {
         graphiteCard(padding: padding, radius: radius)
     }
 
-    /// Dark graphite card with a soft top light. `highlighted` adds a lime edge and glow
-    /// (the active plan, the next day).
+    /// A flat card. `highlighted` adds a thin lime edge (the active plan, the next day).
     func graphiteCard(padding: CGFloat = 18, radius: CGFloat = 26, highlighted: Bool = false) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         return self
             .padding(padding)
-            .background(
-                shape.fill(LinearGradient(colors: [Color(white: 0.135), Color(white: 0.065)],
-                                          startPoint: .topLeading, endPoint: .bottomTrailing))
-            )
-            .overlay(
-                shape.strokeBorder(
-                    highlighted
-                        ? LinearGradient(colors: [Theme.volt.opacity(0.85), Theme.volt.opacity(0.12)],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing)
-                        : LinearGradient(colors: [Color.white.opacity(0.14), Color.white.opacity(0.03)],
-                                         startPoint: .top, endPoint: .bottom),
-                    lineWidth: highlighted ? 1.2 : 1)
-            )
-            .shadow(color: highlighted ? Theme.volt.opacity(0.16) : .clear, radius: highlighted ? 18 : 0, y: highlighted ? 4 : 0)
+            .background(shape.fill(Theme.surface))
+            .overlay(shape.strokeBorder(highlighted ? Theme.volt.opacity(0.55) : Theme.stroke, lineWidth: 1))
     }
 
     /// Light pastel card with ink-colored content.
@@ -180,10 +165,25 @@ struct PrimaryButtonStyle: ButtonStyle {
             .font(.system(.headline).weight(.semibold))
             .foregroundStyle(foreground)
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .frame(height: 52)
             .background(Capsule().fill(gradient))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+/// Black capsule with white text, for buttons sitting on a lime card.
+struct InkButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.headline).weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(Capsule().fill(Theme.ink))
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.85 : 1)
             .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }

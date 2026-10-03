@@ -291,7 +291,6 @@ struct CoachChatView: View {
                         .foregroundStyle(Theme.ink)
                         .frame(width: 46, height: 46)
                         .background(Circle().fill(Theme.volt))
-                        .shadow(color: Theme.volt.opacity(canSend ? 0.45 : 0), radius: 10)
                         .opacity(canSend ? 1 : 0.4)
                 }
                 .buttonStyle(PressableStyle())
@@ -466,7 +465,7 @@ private struct ProposalCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
-                MuscleMapView(exercises: proposal.plan.days.flatMap(\.exercises), glow: proposal.status == .pending)
+                MuscleMapView(exercises: proposal.plan.days.flatMap(\.exercises))
                     .frame(width: 62, height: 82)
             }
             if !proposal.changeSummary.isEmpty {
@@ -507,7 +506,6 @@ private struct ProposalCard: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 46)
                             .background(Capsule().fill(Theme.volt))
-                            .shadow(color: Theme.volt.opacity(0.4), radius: 12)
                     }
                     .buttonStyle(PressableStyle())
                 }

@@ -89,7 +89,6 @@ struct PlansView: View {
                         .foregroundStyle(Theme.ink)
                         .frame(width: 42, height: 42)
                         .background(Circle().fill(Theme.volt))
-                        .shadow(color: Theme.volt.opacity(0.35), radius: 12)
                         .padding(.bottom, 6)
                     Text("Build your own")
                         .font(.display(16))
@@ -138,7 +137,7 @@ struct PlanCard: View {
                 .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            MuscleMapView(exercises: plan.days.flatMap(\.exercises), glow: isActive)
+            MuscleMapView(exercises: plan.days.flatMap(\.exercises))
                 .frame(width: 104, height: 136)
         }
         .frame(minHeight: 136)

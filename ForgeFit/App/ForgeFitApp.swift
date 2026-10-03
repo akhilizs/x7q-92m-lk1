@@ -220,10 +220,9 @@ struct MainTabView: View {
 /// Capsule tab bar floating above the content; the selected tab becomes a white circle.
 struct FloatingTabBar: View {
     @Binding var selection: AppTab
-    @Namespace private var tabIndicator
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 0) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 let selected = selection == tab
                 Button {
@@ -232,37 +231,33 @@ struct FloatingTabBar: View {
                         Haptics.tap()
                     }
                 } label: {
-                    Image(systemName: tab.symbol)
-                        .font(.system(size: 17, weight: selected ? .bold : .regular))
-                        .foregroundStyle(selected ? Theme.ink : Color.white.opacity(0.6))
-                        .frame(width: 50, height: 50)
-                        .background {
-                            if selected {
-                                Circle()
-                                    .fill(Theme.volt)
-                                    .shadow(color: Theme.volt.opacity(0.55), radius: 12)
-                                    .matchedGeometryEffect(id: "selectedTab", in: tabIndicator)
-                            }
-                        }
-                        .contentShape(Circle())
+                    VStack(spacing: 4) {
+                        Image(systemName: tab.symbol)
+                            .font(.system(size: 17, weight: selected ? .semibold : .regular))
+                            .frame(height: 22)
+                        Text(tab.title)
+                            .font(.system(size: 10, weight: selected ? .semibold : .medium))
+                    }
+                    .foregroundStyle(selected ? Theme.volt : Theme.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.title)
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(
             Capsule()
-                .fill(LinearGradient(colors: [Color(white: 0.15), Color(white: 0.07)], startPoint: .top, endPoint: .bottom))
-                .overlay(Capsule().strokeBorder(LinearGradient(colors: [Color.white.opacity(0.18), Color.white.opacity(0.04)],
-                                                               startPoint: .top, endPoint: .bottom), lineWidth: 1))
-                // A faint lime halo under the bar, plus a deep shadow to lift it off the content.
-                .shadow(color: Theme.volt.opacity(0.10), radius: 24, y: 6)
-                .shadow(color: .black.opacity(0.8), radius: 20, y: 10)
+                .fill(Theme.surface)
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.06), lineWidth: 1))
+                .shadow(color: .black.opacity(0.5), radius: 16, y: 6)
         )
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selection)
+        .padding(.horizontal, 16)
+        .animation(.easeOut(duration: 0.2), value: selection)
     }
 }
 

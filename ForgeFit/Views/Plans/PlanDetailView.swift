@@ -111,7 +111,7 @@ struct PlanContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                MuscleMapView(exercises: plan.days.flatMap(\.exercises), glow: true)
+                MuscleMapView(exercises: plan.days.flatMap(\.exercises))
                     .frame(width: 118, height: 158)
             }
             .graphiteCard(padding: 18, radius: 30, highlighted: isActive)
@@ -217,7 +217,7 @@ struct PlannedExerciseRow: View {
                         .frame(width: 44, height: 44)
                 }
                 Text("\(index)")
-                    .font(.system(size: 10, weight: .heavy).width(.expanded))
+                    .font(.system(size: 10, weight: .heavy))
                     .foregroundStyle(Theme.ink)
                     .frame(width: 19, height: 19)
                     .background(Circle().fill(Theme.volt))

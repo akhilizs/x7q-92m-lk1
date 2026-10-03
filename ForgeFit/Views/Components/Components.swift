@@ -124,8 +124,8 @@ struct TagLabel: View {
     }
 }
 
-/// Capsule tag for dark cards: filled lime for the thing that matters ("Active", "Up next"),
-/// otherwise a quiet graphite pill.
+/// Small pill tag: filled lime for the thing that matters ("Active", "Up next"),
+/// otherwise a quiet grey pill.
 struct VoltTag: View {
     let text: String
     var symbol: String? = nil
@@ -136,14 +136,11 @@ struct VoltTag: View {
             if let symbol { Image(systemName: symbol) }
             Text(text)
         }
-        .font(.system(size: 10, weight: .heavy).width(.expanded))
-        .tracking(0.6)
-        .textCase(.uppercase)
+        .font(.caption2.weight(.semibold))
         .foregroundStyle(filled ? Theme.ink : .white)
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
-        .background(Capsule().fill(filled ? AnyShapeStyle(Theme.volt) : AnyShapeStyle(Color.white.opacity(0.09))))
-        .overlay(Capsule().strokeBorder(Color.white.opacity(filled ? 0 : 0.08), lineWidth: 1))
+        .background(Capsule().fill(filled ? AnyShapeStyle(Theme.volt) : AnyShapeStyle(Color.white.opacity(0.08))))
     }
 }
 
@@ -210,13 +207,13 @@ struct CoachOrb: View {
         ZStack {
             if ambient {
                 Circle()
-                    .fill(AngularGradient(colors: [Theme.volt, Color(red: 0.25, green: 0.92, blue: 1.0),
-                                                   Theme.volt.opacity(0.15), Theme.volt],
+                    .fill(AngularGradient(colors: [Color.white.opacity(0.55), Theme.volt.opacity(0.35),
+                                                   Color.white.opacity(0.12), Color.white.opacity(0.55)],
                                           center: .center))
-                    .frame(width: size * 1.5, height: size * 1.5)
-                    .blur(radius: size * 0.32)
-                    .opacity(animating ? 1 : 0.8)
-                    .scaleEffect(breathe ? 1.15 : 0.9)
+                    .frame(width: size * 1.35, height: size * 1.35)
+                    .blur(radius: size * 0.3)
+                    .opacity(animating ? 0.7 : 0.35)
+                    .scaleEffect(breathe ? 1.08 : 0.94)
                     .rotationEffect(.degrees(spin ? 360 : 0))
             } else {
                 Circle()
@@ -231,7 +228,7 @@ struct CoachOrb: View {
                     Circle().fill(RadialGradient(colors: [.white.opacity(0.9), .clear],
                                                  center: .topLeading, startRadius: 1, endRadius: size * 0.6))
                 )
-                .overlay(Circle().strokeBorder(ambient ? Theme.volt.opacity(0.7) : Color.white.opacity(0.5), lineWidth: 1))
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.5), lineWidth: 1))
             Image(systemName: "sparkles")
                 .font(.system(size: size * 0.36, weight: .semibold))
                 .foregroundStyle(Theme.ink)
@@ -243,11 +240,11 @@ struct CoachOrb: View {
             breathe = false
             spin = false
             try? await Task.sleep(nanoseconds: 20_000_000)
-            withAnimation(.easeInOut(duration: animating ? 0.8 : 2.4).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: animating ? 1.2 : 3.2).repeatForever(autoreverses: true)) {
                 breathe = true
             }
             if ambient {
-                withAnimation(.linear(duration: animating ? 3 : 10).repeatForever(autoreverses: false)) {
+                withAnimation(.linear(duration: animating ? 6 : 16).repeatForever(autoreverses: false)) {
                     spin = true
                 }
             }
@@ -282,7 +279,7 @@ struct EmptyStateView: View {
     }
 }
 
-/// A thin bar that fills in when it first appears, with a soft glow in its colour.
+/// A thin bar that fills in when it first appears.
 struct ProgressBar: View {
     let value: Double
     var fill: Color = Theme.volt
@@ -295,7 +292,6 @@ struct ProgressBar: View {
                 Capsule().fill(Color.white.opacity(0.1))
                 Capsule().fill(fill)
                     .frame(width: max(height, geo.size.width * (appeared ? min(max(value, 0), 1) : 0)))
-                    .shadow(color: fill.opacity(0.4), radius: height * 0.9)
             }
         }
         .frame(height: height)
@@ -337,7 +333,6 @@ struct RingView: View {
                 .trim(from: 0, to: appeared ? min(max(progress, 0.02), 1) : 0)
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .shadow(color: color.opacity(0.35), radius: lineWidth)
         }
         .frame(width: size, height: size)
         .animation(.spring(response: 0.9, dampingFraction: 0.85), value: appeared)
