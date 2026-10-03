@@ -149,17 +149,17 @@ struct PlanContentView: View {
                         Haptics.tap()
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("DAY \(index + 1)")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(selected ? Theme.inkSecondary : Theme.textTertiary)
+                            Text("Day \(index + 1)")
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(selected ? Theme.inkSecondary : Theme.textSecondary)
                             Text(d.name)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(selected ? Color.black : Color.white)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(selected ? Theme.ink : Color.white)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(
-                            Capsule().fill(selected ? Color.white : Theme.surfaceRaised)
+                            Capsule().fill(selected ? Theme.volt : Theme.surface)
                         )
                     }
                     .buttonStyle(PressableStyle())

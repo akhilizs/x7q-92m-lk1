@@ -16,7 +16,7 @@ struct ForgeFitApp: App {
 
         let nav = UINavigationBarAppearance()
         nav.configureWithTransparentBackground()
-        nav.backgroundColor = .black
+        nav.backgroundColor = UIColor(white: 16 / 255, alpha: 1)   // Theme.background
         nav.titleTextAttributes = [.foregroundColor: UIColor.white]
         nav.largeTitleTextAttributes = [.foregroundColor: UIColor.white,
                                         .font: UIFont.systemFont(ofSize: 32, weight: .semibold)]

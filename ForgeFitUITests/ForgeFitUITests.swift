@@ -66,7 +66,7 @@ final class ForgeFitUITests: XCTestCase {
 
         // Home
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH ', Alex'")).firstMatch.exists)
+        XCTAssertTrue(text(containing: "Welcome back").exists && app.staticTexts["Alex"].exists, "Home greets the athlete by name")
         snap("05-home")
 
         // Workout
