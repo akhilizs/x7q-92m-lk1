@@ -260,7 +260,7 @@ struct ExercisePickerView: View {
                         creating = true
                     } label: {
                         HStack(spacing: 12) {
-                            IconBadge(symbol: "plus", background: Theme.lilac, foreground: Theme.ink, size: 36)
+                            IconBadge(symbol: "plus", background: Theme.volt, foreground: Theme.ink, size: 36)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(trimmedSearch.isEmpty ? "Create your own exercise" : "Create “\(trimmedSearch)”")
                                     .font(.subheadline.weight(.semibold))

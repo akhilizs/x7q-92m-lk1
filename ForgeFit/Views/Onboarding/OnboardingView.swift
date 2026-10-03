@@ -143,7 +143,7 @@ struct OnboardingView: View {
                         .font(.system(size: 13, weight: .semibold))
                 }
             }
-            .buttonStyle(DarkCapsuleButtonStyle())
+            .buttonStyle(FooterButtonStyle(prominent: step == .building))
             .disabled(!canContinue)
             .opacity(canContinue ? 1 : 0.4)
 
@@ -534,6 +534,20 @@ struct LabeledInput: View {
                 .padding(14)
                 .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
                 .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.stroke))
+        }
+    }
+}
+
+/// Graphite "Continue" for each question; the lime primary button for the final "Let's go".
+private struct FooterButtonStyle: ButtonStyle {
+    let prominent: Bool
+
+    @ViewBuilder
+    func makeBody(configuration: Configuration) -> some View {
+        if prominent {
+            PrimaryButtonStyle().makeBody(configuration: configuration)
+        } else {
+            DarkCapsuleButtonStyle().makeBody(configuration: configuration)
         }
     }
 }

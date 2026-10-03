@@ -530,10 +530,14 @@ struct TrendChart: View {
                 dot(picked)
             } else if let last = points.last {
                 dot(last)
-                    .annotation(position: .top, alignment: .trailing, spacing: 6) {
+                    .annotation(position: .top, alignment: .trailing, spacing: 8) {
                         Text("\(format(last.value)) \(unit)")
                             .font(.metric(11))
                             .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Color(white: 0.09)))
+                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.1)))
                     }
             }
         }

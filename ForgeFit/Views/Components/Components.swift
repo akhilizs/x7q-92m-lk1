@@ -213,10 +213,10 @@ struct CoachOrb: View {
                     .fill(AngularGradient(colors: [Theme.volt, Color(red: 0.25, green: 0.92, blue: 1.0),
                                                    Theme.volt.opacity(0.15), Theme.volt],
                                           center: .center))
-                    .frame(width: size * 1.3, height: size * 1.3)
-                    .blur(radius: size * 0.3)
-                    .opacity(animating ? 0.95 : 0.55)
-                    .scaleEffect(breathe ? 1.14 : 0.88)
+                    .frame(width: size * 1.5, height: size * 1.5)
+                    .blur(radius: size * 0.32)
+                    .opacity(animating ? 1 : 0.8)
+                    .scaleEffect(breathe ? 1.15 : 0.9)
                     .rotationEffect(.degrees(spin ? 360 : 0))
             } else {
                 Circle()

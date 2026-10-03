@@ -208,11 +208,21 @@ struct PlannedExerciseRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            Text("\(index)")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-                .frame(width: 32, height: 32)
-                .background(Circle().fill(Theme.color(for: item.exercise?.primary ?? .fullBody)))
+            ZStack(alignment: .topLeading) {
+                if let exercise = item.exercise {
+                    MuscleBadge(exercise: exercise, size: 44)
+                } else {
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .fill(Color(white: 0.07))
+                        .frame(width: 44, height: 44)
+                }
+                Text("\(index)")
+                    .font(.system(size: 10, weight: .heavy).width(.expanded))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 19, height: 19)
+                    .background(Circle().fill(Theme.volt))
+                    .offset(x: -6, y: -6)
+            }
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.name).font(.system(size: 16, weight: .medium))
                 HStack(spacing: 8) {

@@ -128,7 +128,7 @@ struct ExerciseGuideView: View {
                                     .font(.caption.weight(.bold))
                                     .foregroundStyle(Theme.ink)
                                     .frame(width: 24, height: 24)
-                                    .background(Circle().fill(Theme.paper))
+                                    .background(Circle().fill(Theme.volt))
                                 Text(step)
                                     .font(.subheadline)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -152,12 +152,16 @@ struct ExerciseGuideView: View {
                     .cardStyle()
                 }
 
-                Label(exercise.cue, systemImage: "lightbulb.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.ink)
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.sand))
+                Label {
+                    Text(exercise.cue)
+                        .foregroundStyle(.white)
+                } icon: {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundStyle(Theme.volt)
+                }
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .graphiteCard(padding: 14, radius: 20, highlighted: true)
 
                 if let url = videoURL {
                     Link(destination: url) {
